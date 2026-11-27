@@ -110,6 +110,20 @@ def check_file(fn):
             if c > 1 and key is not None: warn[where].append(f'same title and year x{c}: {t} ({y})')
 
 
+def check_interactions():
+    p = os.path.join(PUB, 'interactions.json')
+    if not os.path.exists(p): return
+    w = 'interactions.json'; seen = Counter()
+    for n, r in enumerate(json.load(open(p)).get('rules', [])):
+        if not isinstance(r, list) or len(r) < 6:
+            err[w].append(f'rule {n} needs [actor, target, kind, weight, text, source]: {r}'); continue
+        if not (num(r[3]) and 0 <= r[3] <= 1): err[w].append(f'weight {r[3]!r} not 0-1: rule {n}')
+        if not (isinstance(r[5], str) and r[5].strip()): warn[w].append(f'unsourced rule {n}: {r[:3]}')
+        seen[tuple(map(str, r[:3]))] += 1
+    for k, c in seen.items():
+        if c > 1: warn[w].append(f'same actor/target/kind x{c}: {k}')
+
+
 WIKI_BAD = re.compile(r'[\[\]{}|<>#_]|https?:|^\s|\s$|\s\s')
 
 
@@ -137,6 +151,7 @@ def check_cards():
 if __name__ == '__main__':
     every = '--all' in sys.argv
     for fn in SCHEMA: check_file(fn)
+    check_interactions()
     check_cards()
     for lab, D in (('ERROR', err), ('warn', warn)):
         for where, L in sorted(D.items()):
