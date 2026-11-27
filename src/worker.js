@@ -43,6 +43,13 @@ export class Room extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS report(mid INTEGER, uid TEXT, ts INTEGER, PRIMARY KEY(mid, uid))");
       this.sql.exec("CREATE TABLE IF NOT EXISTS fol(ep TEXT, title TEXT, at INTEGER, sent INTEGER DEFAULT 0, PRIMARY KEY(ep, title))");
       this.sql.exec("CREATE TABLE IF NOT EXISTS vote(iid INTEGER, uid TEXT, PRIMARY KEY(iid, uid))");
+      // collectible cards
+      this.sql.exec("CREATE TABLE IF NOT EXISTS ckey(kh TEXT PRIMARY KEY, uid TEXT, ts INTEGER)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS cuser(uid TEXT PRIMARY KEY, gsub TEXT, name TEXT, created INTEGER, daily TEXT DEFAULT '', sday TEXT DEFAULT '', sn INTEGER DEFAULT 0)");
+      this.sql.exec("CREATE UNIQUE INDEX IF NOT EXISTS cuser_g ON cuser(gsub)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS card(uid TEXT, cid TEXT, n INTEGER, first INTEGER, PRIMARY KEY(uid, cid))");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS offer(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, give TEXT, want TEXT, ts INTEGER, status TEXT DEFAULT 'open', taker TEXT)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS ipday(ip TEXT, day TEXT, n INTEGER, PRIMARY KEY(ip, day))");
     });
   }
   async fetch(req) {
@@ -116,6 +123,73 @@ export class Room extends DurableObject {
     this.sql.exec("DELETE FROM msg WHERE id < ?", id - 500);
     this.broadcast({ t: "msg", m: { id, ts: now, name, text: st, spot } });
   }
+  // ---------- collectible cards ----------
+  cUser(kh, make) {
+    let r = [...this.sql.exec("SELECT uid FROM ckey WHERE kh=?", kh)][0];
+    if (!r) { if (!make) return null; const uid = crypto.randomUUID().replace(/-/g, "").slice(0, 20); this.sql.exec("INSERT INTO ckey VALUES(?,?,?)", kh, uid, Date.now()); this.sql.exec("INSERT OR IGNORE INTO cuser(uid,created) VALUES(?,?)", uid, Date.now()); r = { uid }; }
+    return [...this.sql.exec("SELECT * FROM cuser WHERE uid=?", r.uid)][0];
+  }
+  cGive(uid, cid, k = 1) { this.sql.exec("INSERT INTO card VALUES(?,?,?,?) ON CONFLICT(uid,cid) DO UPDATE SET n=n+?", uid, cid, k, Date.now(), k); this.sql.exec("DELETE FROM card WHERE uid=? AND cid=? AND n<=0", uid, cid); }
+  cHas(uid, cid) { const r = [...this.sql.exec("SELECT n FROM card WHERE uid=? AND cid=?", uid, cid)][0]; return r ? r.n : 0; }
+  cMe(u) {
+    const cards = {}; for (const r of this.sql.exec("SELECT cid,n FROM card WHERE uid=?", u.uid)) cards[r.cid] = r.n;
+    const offers = [...this.sql.exec("SELECT id,give,want,ts FROM offer WHERE uid=? AND status='open'", u.uid)];
+    const day = new Date().toISOString().slice(0, 10);
+    return { ok: true, id: u.uid.slice(0, 6), name: u.name || "", signedIn: !!u.gsub, cards, daily: u.daily !== day, spotsLeft: u.sday === day ? Math.max(0, 8 - u.sn) : 8, offers };
+  }
+  async cardsOp(op, b, ipH, ctx) {
+    const day = new Date().toISOString().slice(0, 10), kh = b.k && /^[a-f0-9]{32,64}$/.test(b.k) ? await hash("k" + b.k) : null;
+    if (op === "offers") return { ok: true, offers: [...this.sql.exec("SELECT o.id,o.give,o.want,o.ts,u.name,substr(u.uid,1,6) AS who FROM offer o JOIN cuser u ON u.uid=o.uid WHERE o.status='open' ORDER BY o.id DESC LIMIT 200")] };
+    if (!kh) return { ok: false, error: "Missing device key" };
+    const u = this.cUser(kh, true);
+    if (op === "me") return this.cMe(u);
+    if (op === "name") { const nm = String(b.name || "").trim(), bad = checkText(nm, "name"); if (bad) return { ok: false, error: bad }; this.sql.exec("UPDATE cuser SET name=? WHERE uid=?", nm, u.uid); return this.cMe({ ...u, name: nm }); }
+    if (op === "daily") {
+      if (u.daily === day) return { ok: false, error: "You already opened today's free pack. Come back tomorrow." };
+      const ip = [...this.sql.exec("SELECT n FROM ipday WHERE ip=? AND day=?", ipH, day)][0];
+      if (ip && ip.n >= 4) return { ok: false, error: "Too many free packs from this network today." };
+      this.sql.exec("INSERT INTO ipday VALUES(?,?,1) ON CONFLICT(ip,day) DO UPDATE SET n=n+1", ipH, day);
+      this.sql.exec("UPDATE cuser SET daily=? WHERE uid=?", day, u.uid);
+      for (const c of b.picks) this.cGive(u.uid, c);
+      return { ...this.cMe({ ...u, daily: day }), got: b.picks };
+    }
+    if (op === "spot") {
+      const sn = u.sday === day ? u.sn : 0; if (sn >= 8) return { ok: false, error: "No more spotting cards today." };
+      this.sql.exec("UPDATE cuser SET sday=?, sn=? WHERE uid=?", day, sn + 1, u.uid);
+      if (b.win) this.cGive(u.uid, b.cid);
+      return { ...this.cMe({ ...u, sday: day, sn: sn + 1 }), got: b.win ? [b.cid] : [] };
+    }
+    if (op === "witness") { if (this.cHas(u.uid, b.cid)) return { ok: false, error: "You already have this card." }; this.cGive(u.uid, b.cid); return { ...this.cMe(u), got: [b.cid] }; }
+    if (op === "google") {
+      const g = b.g; let owner = [...this.sql.exec("SELECT uid FROM cuser WHERE gsub=?", g.sub)][0];
+      if (!owner) { this.sql.exec("UPDATE cuser SET gsub=? WHERE uid=?", g.sub, u.uid); if (!u.name && g.name) { const nm = String(g.name).split(" ")[0].slice(0, 18); if (!checkText(nm, "name")) this.sql.exec("UPDATE cuser SET name=? WHERE uid=?", nm, u.uid); } return this.cMe(this.cUser(kh)); }
+      if (owner.uid !== u.uid) { // this device joins the signed-in account and brings its cards along
+        for (const r of [...this.sql.exec("SELECT cid,n FROM card WHERE uid=?", u.uid)]) this.cGive(owner.uid, r.cid, r.n);
+        this.sql.exec("DELETE FROM card WHERE uid=?", u.uid); this.sql.exec("UPDATE ckey SET uid=? WHERE kh=?", owner.uid, kh);
+      }
+      return this.cMe(this.cUser(kh));
+    }
+    if (op === "signout") { const nu = crypto.randomUUID().replace(/-/g, "").slice(0, 20); this.sql.exec("UPDATE ckey SET uid=? WHERE kh=?", nu, kh); this.sql.exec("INSERT OR IGNORE INTO cuser(uid,created) VALUES(?,?)", nu, Date.now()); return this.cMe(this.cUser(kh)); }
+    // trading needs a signed-in account so cards can't be duped with throwaway devices
+    if (["offer", "cancel", "accept"].includes(op) && !u.gsub) return { ok: false, error: "Sign in with Google to trade." };
+    if (op === "offer") {
+      if (!b.give || !b.want || b.give === b.want) return { ok: false, error: "Pick a card to give and a card you want." };
+      if ([...this.sql.exec("SELECT COUNT(*) AS n FROM offer WHERE uid=? AND status='open'", u.uid)][0].n >= 5) return { ok: false, error: "You can have 5 open trades at a time." };
+      if (!this.cHas(u.uid, b.give)) return { ok: false, error: "You don't have that card." };
+      this.cGive(u.uid, b.give, -1); // held until the trade completes or is cancelled
+      this.sql.exec("INSERT INTO offer(uid,give,want,ts) VALUES(?,?,?,?)", u.uid, b.give, b.want, Date.now());
+      return this.cMe(u);
+    }
+    if (op === "cancel") { const o = [...this.sql.exec("SELECT * FROM offer WHERE id=? AND uid=? AND status='open'", b.id, u.uid)][0]; if (!o) return { ok: false, error: "Trade not found." }; this.sql.exec("UPDATE offer SET status='cancelled' WHERE id=?", o.id); this.cGive(u.uid, o.give); return this.cMe(u); }
+    if (op === "accept") {
+      const o = [...this.sql.exec("SELECT * FROM offer WHERE id=? AND status='open'", b.id)][0]; if (!o) return { ok: false, error: "That trade is gone." };
+      if (o.uid === u.uid) return { ok: false, error: "That's your own trade." };
+      if (!this.cHas(u.uid, o.want)) return { ok: false, error: "You don't have the card they want." };
+      this.ctx.storage.transactionSync(() => { this.sql.exec("UPDATE offer SET status='done', taker=? WHERE id=?", u.uid, o.id); this.cGive(u.uid, o.want, -1); this.cGive(o.uid, o.want); this.cGive(u.uid, o.give); });
+      return { ...this.cMe(u), got: [o.give] };
+    }
+    return { ok: false, error: "Unknown" };
+  }
   async webSocketClose(ws) { try { ws.close(); } catch (e) { } }
   // ---------- push alerts (no payload: the phone fetches /api/alert) ----------
   async alerts(ev) {
@@ -139,6 +213,51 @@ export class Room extends DurableObject {
   }
 }
 
+// ---------- cards: catalog, world clock, Google sign-in ----------
+let CAT = null, CATT = 0;
+async function catalog(env) {
+  if (CAT && Date.now() - CATT < 600000) return CAT;
+  const j = await (await env.ASSETS.fetch(new Request("https://assets.local/cards.json"))).json();
+  const byId = {}; for (const c of j.cards) byId[c[0]] = c;
+  CAT = { ...j, byId }; CATT = Date.now(); return CAT;
+}
+function yearAtDay(d) { for (let i = 1; i < KN.length; i++) if (d <= KN[i][0]) { const a = KN[i - 1], b = KN[i]; return a[1] + (b[1] - a[1]) * (d - a[0]) / (b[0] - a[0]); } return 2100 + (d - 825) / 365.25; }
+function worldNow(env) { const d = (Date.now() - Number(env.WORLD_START)) / 864e5; return { d, y: yearAtDay(d) }; }
+function seasonNow(cat, y) { for (const s of cat.seasons) if (y >= s[2] && y < s[3]) return s; return cat.seasons[cat.seasons.length - 1]; }
+function pickCards(cat, season, n) {
+  const pool = cat.cards.filter(c => c[1] === season && !(c[2] === "ev" && c[8])), W = [0, 60, 25, 11, 3.5, .5], out = [];
+  for (let i = 0; i < n; i++) {
+    let r = Math.random() * 100, rar = 1; for (let k = 5; k >= 1; k--) { const cum = W.slice(k).reduce((a, b) => a + b, 0); if (r < cum && k > rar) { rar = k; break; } }
+    for (rar = Math.min(rar, 5); rar >= 1; rar--) { const p = pool.filter(c => c[4] === rar); if (p.length) { out.push(p[(Math.random() * p.length) | 0][0]); break; } }
+  }
+  return out;
+}
+let GK = null, GKT = 0;
+const b64d = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+async function verifyGoogle(tok, env) {
+  if (!env.GOOGLE_CLIENT_ID) return null;
+  const [h, p, s] = String(tok || "").split("."); if (!s) return null;
+  const head = JSON.parse(new TextDecoder().decode(b64d(h))), pay = JSON.parse(new TextDecoder().decode(b64d(p)));
+  if (!GK || Date.now() - GKT > 36e5) { GK = (await (await fetch("https://www.googleapis.com/oauth2/v3/certs")).json()).keys; GKT = Date.now(); }
+  const jwk = GK.find(k => k.kid === head.kid); if (!jwk) return null;
+  const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+  const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64d(s), new TextEncoder().encode(h + "." + p));
+  if (!ok || pay.aud !== env.GOOGLE_CLIENT_ID || !["accounts.google.com", "https://accounts.google.com"].includes(pay.iss) || pay.exp * 1000 < Date.now()) return null;
+  return { sub: String(pay.sub), name: pay.given_name || pay.name || "" };
+}
+async function cardsApi(op, request, env, room) {
+  const cat = await catalog(env), w = worldNow(env), se = seasonNow(cat, w.y);
+  if (op === "catalog") return J({ ok: true, season: se[0], year: w.y, day: w.d, googleClient: env.GOOGLE_CLIENT_ID || null, shop: !!env.STRIPE_SECRET });
+  const b = request.method === "POST" ? await request.json().catch(() => ({})) : {};
+  const ipH = await hash("ip" + (request.headers.get("cf-connecting-ip") || "") + (env.SALT || "hl"));
+  if (op === "daily") b.picks = pickCards(cat, se[0], 3);
+  if (op === "spot") { const c = cat.byId[b.cid]; if (!c || !["an", "pl"].includes(c[2]) || c[1] !== se[0]) return J({ ok: false, error: "That card isn't in this season." }); b.win = Math.random() < .35; }
+  if (op === "witness") { const c = cat.byId[b.cid]; if (!c || c[2] !== "ev") return J({ ok: false, error: "Not an event card." }); const ed = dayAt(c[5]); if (w.d < ed - 0.01 || w.d > ed + 0.25) return J({ ok: false, error: "You have to be watching when it happens." }); }
+  if (["offer", "accept"].includes(op)) { const g = cat.byId[b.give], wa = cat.byId[b.want]; if (op === "offer" && (!g || !wa)) return J({ ok: false, error: "Unknown card." }); }
+  if (op === "google") { const g = await verifyGoogle(b.cred, env); if (!g) return J({ ok: false, error: "Google sign-in failed." }); b.g = g; }
+  if (op === "shop") return J({ ok: false, error: "Card packs aren't for sale yet." });
+  return J(await room.cardsOp(op, b, ipH));
+}
 async function hash(s) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(d)].slice(0, 12).map(b => b.toString(16).padStart(2, "0")).join(""); }
 const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const unb64u = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
@@ -207,6 +326,7 @@ export default {
     if (url.pathname === "/api/wlease" && request.method === "POST") return room.fetch(new Request(url.origin + "/wlease", { method: "POST", body: await request.text() }));
     if (url.pathname === "/api/wdoc") { if (request.method === "PUT") return room.fetch(new Request(url.origin + "/wset" + url.search, { method: "POST", body: await request.text() })); return room.fetch(new Request(url.origin + "/wget" + url.search)); }
     if (url.pathname === "/api/stats") return room.fetch(new Request(url.origin + "/stats"));
+    if (url.pathname.startsWith("/api/cards/")) { const op = url.pathname.slice(11); if (!/^(catalog|me|name|daily|spot|witness|offers|offer|cancel|accept|google|signout|shop)$/.test(op)) return J({ ok: false }, 404); return cardsApi(op, request, env, room); }
     if (url.pathname === "/api/wx") return realWeather(url, ctx);
     if (url.pathname === "/api/ideas") return room.fetch(new Request(url.origin + "/ideas"));
     if (url.pathname === "/api/push/sub" && request.method === "POST") return room.fetch(new Request(url.origin + "/sub", { method: "POST", body: await request.text() }));
