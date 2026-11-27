@@ -344,7 +344,7 @@ const SEA=[[-70000,.06],[-60000,.07],[-30000,.07],[-26000,.1],[-19000,.1],[-1400
 const ICEF=[[-70000,.45],[-60000,.6],[-40000,.6],[-29000,.85],[-26000,1],[-19000,1],[-15000,.7],[-12000,.45],[-10000,.22],[-8000,.06],[-6500,0]];
 const GRN=[[-11000,0],[-9000,1],[-4500,1],[-3000,0]];
 let CLIM={sea:-1,ice:-1,g:-1},climT=0;
-const RELK=34;const tex=document.createElement('canvas'),TW=2048,TH=1024;const RELF=new Float32Array(TW*TH),RELT=new Float32Array(TW*TH);tex.width=TW;tex.height=TH;const tctx=tex.getContext('2d');
+const RELK=34;const tex=document.createElement('canvas'),TW=2048,TH=1024;const SNL=new Float32Array(TH),RELR=new Float32Array(TW*TH),RELF=new Float32Array(TW*TH),RELT=new Float32Array(TW*TH);tex.width=TW;tex.height=TH;const tctx=tex.getContext('2d');
 const spc=document.createElement('canvas');spc.width=1024;spc.height=512;const sctx=spc.getContext('2d');
 const LC=new Float32Array(N*3),OC=new Float32Array(N*3);
 function biomeCol(k,lat,E,ice,g,land){
@@ -400,12 +400,15 @@ function applyClimate(Y,force){
    const land=e>-sea,C=land?LC:OC,p=(y*TW+x)*4;RELF[y*TW+x]=land?Math.max(eb,0)+(vn(x/3,y/3)-.5)*.02*Math.min(1,eb*2):-1;
    D[p]=C[a*3]*w0+C[b*3]*w1+C[c*3]*w2+C[d*3]*w3;D[p+1]=C[a*3+1]*w0+C[b*3+1]*w1+C[c*3+1]*w2+C[d*3+1]*w3;D[p+2]=C[a*3+2]*w0+C[b*3+2]*w1+C[c*3+2]*w2+C[d*3+2]*w3;D[p+3]=255;
    if(!(x&1)&&!(y&1)){const q=((y>>1)*1024+(x>>1))*4,v=land?10:(D[p]>200?30:110);SD[q]=SD[q+1]=SD[q+2]=v;SD[q+3]=255}}}
+ // snow line by latitude (about 5 km near the equator, 3 km in the Alps, 1.5 km in Norway), lower in winter and ice ages, higher as it warms
+ for(let y=0;y<TH;y++){const lat=90-(y+.5)/TH*180,al=Math.abs(lat),w=lat>0?SEAS:-SEAS;SNL[y]=Math.max(.15,5.0-Math.max(0,al-22)*.105-(w>0?.75*w:.35*w)-(CLIM.ice||0)*1.1+(CLIM.w||0)*.5)}
  // shaded relief: light from the north-west so mountains, ridges and valleys stand out at every height
- {const W=TW,H=TH,src=RELF,tmp=RELT,rr=4;for(let pass=0;pass<2;pass++){for(let y=0;y<H;y++){let s=0;const o=y*W;for(let x=-rr;x<=rr;x++)s+=Math.max(0,src[o+(x+W)%W]);for(let x=0;x<W;x++){tmp[o+x]=s/(2*rr+1);s+=Math.max(0,src[o+(x+rr+1)%W])-Math.max(0,src[o+(x-rr+W)%W])}}
+ RELR.set(RELF);{const W=TW,H=TH,src=RELF,tmp=RELT,rr=4;for(let pass=0;pass<2;pass++){for(let y=0;y<H;y++){let s=0;const o=y*W;for(let x=-rr;x<=rr;x++)s+=Math.max(0,src[o+(x+W)%W]);for(let x=0;x<W;x++){tmp[o+x]=s/(2*rr+1);s+=Math.max(0,src[o+(x+rr+1)%W])-Math.max(0,src[o+(x-rr+W)%W])}}
   for(let x=0;x<W;x++){let s=0;for(let y=-rr;y<=rr;y++)s+=tmp[clamp(y,0,H-1)*W+x];for(let y=0;y<H;y++){const k=y*W+x;const v=s/(2*rr+1);src[k]=src[k]<0?-1:v;s+=tmp[Math.min(H-1,y+rr+1)*W+x]-tmp[Math.max(0,y-rr)*W+x]}}}}
  for(let y=1;y<TH-1;y++){const cl=Math.max(.2,Math.cos((90-(y+.5)/TH*180)*DEG));for(let x=0;x<TW;x++){const k=y*TW+x,h=RELF[k];if(h<0)continue;const xl=x?k-1:k+TW-1,xr=x<TW-1?k+1:k-TW+1;
   const hl=RELF[xl]<0?h:RELF[xl],hr=RELF[xr]<0?h:RELF[xr],hu=RELF[k-TW]<0?h:RELF[k-TW],hd=RELF[k+TW]<0?h:RELF[k+TW];
-  const gx=(hr-hl)/cl,gy=hd-hu,s=clamp(1+(-gx*.7-gy*.7)*-RELK+h*.04,.66,1.38),p=k*4;D[p]=Math.min(255,D[p]*s);D[p+1]=Math.min(255,D[p+1]*s);D[p+2]=Math.min(255,D[p+2]*s)}}
+  const gx=(hr-hl)/cl,gy=hd-hu,s=clamp(1+(-gx*.7-gy*.7)*-RELK+h*.04,.66,1.38),p=k*4;
+  const hr0=RELR[k];if(hr0>.45){const km=(hr0-.1)/.27*.92+Math.max(0,hr0-h)/.27*2.2,sf=clamp((km-SNL[y])/.4+(vn(x/2.5,y/2.5)-.5)*.9,0,1)*.92;if(sf>0){D[p]=lerp(D[p],242,sf);D[p+1]=lerp(D[p+1],245,sf);D[p+2]=lerp(D[p+2],250,sf)}}D[p]=Math.min(255,D[p]*s);D[p+1]=Math.min(255,D[p+1]*s);D[p+2]=Math.min(255,D[p+2]*s)}}
  tctx.putImageData(img,0,0);sctx.putImageData(simg,0,0);
  if(!paleo){tctx.strokeStyle='rgba(58,112,150,.95)';tctx.lineCap=tctx.lineJoin='round';
   {const gk=clamp((simY+5.5e6)/(3.5e6),0,1);if(gk>0&&simY>-6e6){const GC=[[36.87,-111.6],[36.6,-111.85],[36.25,-111.95],[36.1,-112.1],[36.2,-112.6],[36.3,-113.1],[36.05,-113.8]];tctx.strokeStyle=`rgba(120,52,30,${.4+.5*gk})`;tctx.lineWidth=1+gk*3.5;tctx.beginPath();GC.forEach((p,i)=>{const X=(p[1]+180)/360*TW,Yp=(90-p[0])/180*TH;i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp)});tctx.stroke();tctx.strokeStyle='rgba(58,112,150,.95)'}}
@@ -430,6 +433,9 @@ const camera=new THREE.PerspectiveCamera(55,1,.01,4000);
 const sun=new THREE.DirectionalLight(0xfff1dc,1.15);scene.add(sun);scene.add(sun.target);
 const amb=new THREE.AmbientLight(0x9aaad0,.46);scene.add(amb);
 let globeTex,specTex,globeGeo,globe,DIRS;
+function detailTex(){const S=256,d=new Uint8Array(S*S*4),oct=(f,ch)=>{const g=new Float32Array(f*f);for(let i=0;i<f*f;i++)g[i]=rnd();return(x,y)=>{const X=x/S*f,Y=y/S*f,i0=Math.floor(X),j0=Math.floor(Y),fx=X-i0,fy=Y-j0,a=g[(j0%f)*f+i0%f],b=g[(j0%f)*f+(i0+1)%f],c=g[((j0+1)%f)*f+i0%f],e=g[((j0+1)%f)*f+(i0+1)%f],sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);return a+(b-a)*sx+(c-a)*sy+(a-b-c+e)*sx*sy}};
+ const n1=oct(8),n2=oct(16),n3=oct(32),n4=oct(64),n5=oct(128);for(let y=0;y<S;y++)for(let x=0;x<S;x++){const p=(y*S+x)*4,v=n1(x,y)*.3+n2(x,y)*.25+n3(x,y)*.2+n4(x,y)*.15+n5(x,y)*.1;d[p]=v*255;d[p+1]=(n2(x+31,y+17)*.5+n4(x,y)*.3+n5(x+7,y)*.2)*255;d[p+2]=(n4(x+11,y+5)*.5+n5(x,y+3)*.5)*255;d[p+3]=255}
+ const t=new THREE.DataTexture(d,S,S,THREE.RGBAFormat);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());t.needsUpdate=true;return t}
 function makeGlobe(){
  globeTex=new THREE.CanvasTexture(tex);globeTex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
  specTex=new THREE.CanvasTexture(spc);
@@ -437,7 +443,15 @@ function makeGlobe(){
  const uv=globeGeo.attributes.uv.array,n=uv.length/2;DIRS=new Float32Array(n*3);
  for(let i=0;i<n;i++){const lon=uv[i*2]*360-180,lat=uv[i*2+1]*180-90,v=v3(lat,lon,1);DIRS[i*3]=v.x;DIRS[i*3+1]=v.y;DIRS[i*3+2]=v.z}
  updGlobeHeights();
- globe=new THREE.Mesh(globeGeo,new THREE.MeshPhongMaterial({map:globeTex,specularMap:specTex,specular:0x26303c,shininess:30}));scene.add(globe);
+ const gm=new THREE.MeshPhongMaterial({map:globeTex,specularMap:specTex,specular:0x26303c,shininess:30});
+ // close-up ground detail: a fine tiling grain on land that fades in as the camera gets low, so the ground stays crisp instead of blurry
+ const DT=detailTex();gm.onBeforeCompile=sh=>{sh.uniforms.detailMap={value:DT};sh.fragmentShader='uniform sampler2D detailMap;\n'+sh.fragmentShader.replace('#include <specularmap_fragment>',`#include <specularmap_fragment>
+  { float land=1.-smoothstep(.12,.3,specularStrength); float dist=length(vViewPosition);
+    vec4 d1=texture2D(detailMap,vUv*vec2(1536.,768.)),d2=texture2D(detailMap,vUv*vec2(192.,96.));
+    float nearF=1.-smoothstep(2.,14.,dist),midF=1.-smoothstep(10.,90.,dist);
+    float g=mix(1.,.78+.44*d1.r,nearF*.75)*mix(1.,.86+.28*d2.g,midF*.6);
+    diffuseColor.rgb*=mix(1.,g,land); diffuseColor.rgb+=land*nearF*(d1.b-.5)*.05; }`)};
+ globe=new THREE.Mesh(globeGeo,gm);scene.add(globe);
  seaWater=new THREE.Mesh(new THREE.SphereGeometry(R-.01,256,128),new THREE.MeshPhongMaterial({color:0x1d5486,transparent:true,opacity:.32,specular:0x44556a,shininess:70,depthWrite:false}));seaWater.renderOrder=1;seaWater.visible=SEAFLOOR;scene.add(seaWater);
  // atmosphere
  const atm=new THREE.Mesh(new THREE.SphereGeometry(R*1.03,96,48),new THREE.ShaderMaterial({transparent:true,side:THREE.BackSide,depthWrite:false,blending:THREE.AdditiveBlending,
@@ -1259,7 +1273,7 @@ let WX={kind:'',t:0,pts:null};
 function wxPick(){const c=cam.t,p=ll(c.x,c.y,c.z),b=biomeAt(p[0],p[1]),mo=new Date().getUTCMonth(),win=p[0]>0?(mo>=10||mo<=2):(mo>=4&&mo<=8),mons=p[0]>5&&p[0]<30&&p[1]>65&&p[1]<120&&mo>=5&&mo<=8;
  let r=b===8?.55:b===4||b===3?.3:b===7?(p[0]<0?(mo>=10||mo<=3?.45:.05):(mo>=5&&mo<=9?.45:.05)):b===6?.02:b===2||b===1?.25:.15;if(mons)r=.75;if(hAt(p[0],p[1])<0)r=.2;
  const snow=(win&&Math.abs(p[0])>40)||b===1||b===2;WX.kind=rnd()<r?(snow?'snow':mons?'monsoon rain':b===8?'tropical downpour':'rain'):b===6?'hot and dry':win?'cold and clear':'clear';if(simY<-3e6&&WX.kind==='snow'&&Math.abs(p[0])<55)WX.kind='rain';try{const tc=tempAt(p[0],p[1]);if(WX.kind==='snow'&&tc>2)WX.kind='rain';if(/rain|monsoon|downpour/.test(WX.kind)&&tc<-2)WX.kind='snow';if(WX.kind==='cold and clear'&&tc>15)WX.kind='clear'}catch(e){}}
-function updWeather(dt){WX.t-=dt;if(WX.t<=0){WX.t=50+rnd()*40;wxPick()}const on=cam.alt<4&&/rain|snow/.test(WX.kind);
+function updWeather(dt){WX.t-=dt;if(WX.t<=0||!WX.at||cam.t.angleTo(WX.at)>.05){WX.t=50+rnd()*40;WX.at=cam.t.clone();if(!RWX)wxPick()}const on=cam.alt<4&&/rain|snow/.test(WX.kind);
  if(!WX.pts){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(700*3),3));WX.pts=new THREE.Points(g,new THREE.PointsMaterial({map:DOTT(),alphaTest:.02,color:0xcfe3ff,size:.012,transparent:true,opacity:.7,depthWrite:false}));WX.pts.frustumCulled=false;scene.add(WX.pts);WX.seed=Array.from({length:700},()=>[rnd()-.5,rnd(),rnd()-.5])}
  WX.pts.visible=on;if(!on)return;const snow=WX.kind==='snow',U=cam.t,Nn=new THREE.Vector3(0,1,0).addScaledVector(U,-U.y).normalize(),E=new THREE.Vector3().crossVectors(Nn,U),gh=Math.max(0,hDir(U.x,U.y,U.z)),base=U.clone().multiplyScalar(R+gh),T=performance.now()/1000,a=WX.pts.geometry.attributes.position.array,span=Math.max(.6,cam.alt*1.2);
  WX.pts.material.color.setHex(snow?0xffffff:0xaac8ff);WX.pts.material.size=snow?.02:.01;
