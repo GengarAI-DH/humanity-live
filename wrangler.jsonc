@@ -1,0 +1,7 @@
+{
+  "name": "humanity-live",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "vars": { "WORLD_START": "1795764601441" }
+}
