@@ -118,6 +118,11 @@ svg.ch{width:100%;height:120px;display:block;margin-top:6px}
 // ================== utilities ==================
 const $=id=>document.getElementById(id);
 const DEG=Math.PI/180,R=100,GW=720,GH=360;
+// ---- real ocean depth (ETOPO-based topo grid): seafloor colour by depth and a 3D seafloor under see-through water ----
+var SEAFLOOR=true,seaWater=null;const SDP=new Float32Array(GW*GH),KMU=.0864;
+const OSTOP=[[0,[98,182,188]],[120,[66,152,172]],[600,[38,108,152]],[2500,[22,68,122]],[4500,[14,44,92]],[6500,[8,28,68]],[9000,[4,15,44]],[11000,[2,9,30]]];
+function oceanCol(d){let i=1;while(i<OSTOP.length-1&&d>OSTOP[i][0])i++;const a=OSTOP[i-1],b=OSTOP[i],f=clamp((d-a[0])/(b[0]-a[0]),0,1);return[lerp(a[1][0],b[1][0],f),lerp(a[1][1],b[1][1],f),lerp(a[1][2],b[1][2],f)]}
+function sdAt(lat,lon){let gx=(lon+180)*2-.5,gy=(90-lat)*2-.5;const i0f=Math.floor(gx),fx=gx-i0f,j0=clamp(Math.floor(gy),0,GH-1),j1=Math.min(GH-1,j0+1),fy=clamp(gy-j0,0,1),i0=(i0f+GW)%GW,i1=(i0+1)%GW;return SDP[j0*GW+i0]*(1-fx)*(1-fy)+SDP[j0*GW+i1]*fx*(1-fy)+SDP[j1*GW+i0]*(1-fx)*fy+SDP[j1*GW+i1]*fx*fy}
 const rnd=Math.random,pick=a=>a[(rnd()*a.length)|0],clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t;
 function srng(s){let x=(Math.imul(s|0,2654435761)>>>0)||7;return()=>{x^=x<<13;x>>>=0;x^=x>>>17;x^=x<<5;x>>>=0;return x/4294967296}}
 function hash(x,y){let h=(Math.imul(x|0,374761393)+Math.imul(y|0,668265263))|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296}
@@ -331,6 +336,7 @@ function paleoMap(Y){const my=-Y/1e6,QI={};for(const k of PORDER)QI[k]=plateQ(k,
    if(iceA||t<.04){c=[236,240,245];b=1}else if(m<.22){c=my>200?[186,112,72]:[206,168,118];b=6}else if(m<.42){c=my>23?[150,138,82]:[176,160,98];b=5}else if(t<.3){c=[48,78,56];b=3}else if(t>.75&&m>.7){c=[34,88,40];b=8}else{c=my>125?[52,86,46]:[62,104,50];b=my>125?3:4}
    const nz=.88+.24*fbm(k%GW/9,j/9);LC[k*3]=c[0]*nz;LC[k*3+1]=c[1]*nz;LC[k*3+2]=c[2]*nz;BI[k]=b;HG[k]=.035+Math.max(E,0)*.32+(iceA?.1:0)}
   else{EC[k]=-DIST[k]*.25;BI[k]=0;HG[k]=-.025}
+  SDP[k]=SRC[k]>=0?0:Math.min(DIST[k]*350,4500)*KMU/1000;
   const dd=clamp(DIST[k]/4,0,1);OC[k*3]=lerp(66,14,dd);OC[k*3+1]=lerp(150,48,dd);OC[k*3+2]=lerp(170,92,dd)}}
 // climate
 const SEA=[[-70000,.06],[-60000,.07],[-30000,.07],[-26000,.1],[-19000,.1],[-14000,.075],[-11000,.042],[-8000,.012],[-6000,0]];
@@ -374,7 +380,7 @@ function applyClimate(Y,force){
   CLIM={sea,ice,g,w:warm};EC.set(E0);bfs(k=>!!LAND[k],DIST);
   for(let k=0;k<N;k++){const j=(k/GW)|0,lat=latOf(j),E=E0[k],land=E>-sea;
    const c=biomeCol(k,lat,Math.max(E,0),ice,g,land);LC[k*3]=c[0];LC[k*3+1]=c[1];LC[k*3+2]=c[2];
-   const dd=clamp(DIST[k]/4,0,1);let o=[lerp(70,14,dd),lerp(146,44,dd),lerp(168,86,dd)];
+   const dd=clamp(DIST[k]/4,0,1),dm=land?0:Math.max(0,-TOPOM[k]-sea*455);SDP[k]=land?0:Math.min(dm,11000)*KMU/1000;let o=dm>0?oceanCol(dm):[lerp(70,14,dd),lerp(146,44,dd),lerp(168,86,dd)];
    if(lat>76-ice*9+warm*9||lat<-(72-ice*6+warm*2))o=[222,230,236];
    if(!land&&DIST[k]<=3&&REEFS.some(r=>ell(lat,lonOf(k%GW),r)<1)){const bl=clamp((Y-2030)/50,0,.7);o=[lerp(60,215,bl),lerp(196,226,bl),lerp(190,214,bl)]}
    OC[k*3]=o[0];OC[k*3+1]=o[1];OC[k*3+2]=o[2];
@@ -422,6 +428,7 @@ function makeGlobe(){
  for(let i=0;i<n;i++){const lon=uv[i*2]*360-180,lat=uv[i*2+1]*180-90,v=v3(lat,lon,1);DIRS[i*3]=v.x;DIRS[i*3+1]=v.y;DIRS[i*3+2]=v.z}
  updGlobeHeights();
  globe=new THREE.Mesh(globeGeo,new THREE.MeshPhongMaterial({map:globeTex,specularMap:specTex,specular:0x26303c,shininess:30}));scene.add(globe);
+ seaWater=new THREE.Mesh(new THREE.SphereGeometry(R-.01,256,128),new THREE.MeshPhongMaterial({color:0x1d5486,transparent:true,opacity:.32,specular:0x44556a,shininess:70,depthWrite:false}));seaWater.renderOrder=1;seaWater.visible=SEAFLOOR;scene.add(seaWater);
  // atmosphere
  const atm=new THREE.Mesh(new THREE.SphereGeometry(R*1.03,96,48),new THREE.ShaderMaterial({transparent:true,side:THREE.BackSide,depthWrite:false,blending:THREE.AdditiveBlending,
   vertexShader:'varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
@@ -437,7 +444,7 @@ function makeGlobe(){
  sg.setAttribute('position',new THREE.BufferAttribute(sp,3));scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:1.6,sizeAttenuation:false})));
 }
 let clouds;
-function updGlobeHeights(){const p=globeGeo.attributes.position.array;for(let i=0;i<p.length/3;i++){const x=DIRS[i*3],y=DIRS[i*3+1],z=DIRS[i*3+2],r=R+hDir(x,y,z);p[i*3]=x*r;p[i*3+1]=y*r;p[i*3+2]=z*r}globeGeo.attributes.position.needsUpdate=true;globeGeo.computeVertexNormals();
+function updGlobeHeights(){const p=globeGeo.attributes.position.array;for(let i=0;i<p.length/3;i++){const x=DIRS[i*3],y=DIRS[i*3+1],z=DIRS[i*3+2];let r=R+hDir(x,y,z);if(SEAFLOOR&&r<R){const q=ll(x,y,z);r-=sdAt(q[0],q[1])}p[i*3]=x*r;p[i*3+1]=y*r;p[i*3+2]=z*r}globeGeo.attributes.position.needsUpdate=true;globeGeo.computeVertexNormals();
  for(const s of S)if(s.built)s.dirty=true}
 
 // geometry library
@@ -1955,7 +1962,7 @@ let _dot=null;function DOTT(){if(_dot)return _dot;const c=document.createElement
 const MOBILE=/iPhone|iPad|Android/i.test(navigator.userAgent);
 const QG={lvl:MOBILE?1:0,fr:0,t:0,good:0,last:0,locked:false};
 function qPR(){return QG.lvl===0?Math.min(devicePixelRatio,2):QG.lvl===1?Math.min(devicePixelRatio,1.5):1}
-function applyQ(){renderer.setPixelRatio(LITE?1:qPR());resize();PSCALE=QG.lvl===2||LITE?.45:QG.lvl===1?.75:1}
+function applyQ(){renderer.setPixelRatio(LITE?1:qPR());resize();PSCALE=QG.lvl===2||LITE?.45:QG.lvl===1?.75:1;const sf=QG.lvl<2&&!LITE;if(sf!==SEAFLOOR){SEAFLOOR=sf;if(seaWater)seaWater.visible=sf;if(globeGeo)try{updGlobeHeights()}catch(e){}}}
 let PSCALE=1;
 function govern(dt){QG.fr++;QG.t+=dt;if(QG.t<4)return;const fps=QG.fr/QG.t;QG.fr=0;QG.t=0;QG.fps=fps;if(document.hidden||catching)return;
  if(fps<36&&QG.lvl<2){QG.lvl++;QG.good=0;applyQ();if(QG.lvl===2&&!LITE){LITE=true;applyLite();toast('Lowered the graphics a little to keep it smooth',3000)}}
