@@ -162,6 +162,30 @@ async function realWeather(url, ctx) {
   } catch (e) { return J({ ok: false }, 502); }
 }
 
+// ---------- data imports from official sources ----------
+// The update runs can't reach these sites directly, so they leave a job in the IMPORTS store
+// (key "job:<id>", value = {"url": "..."}); every minute this downloads it and saves the result
+// as "res:<id>" (raw bytes, metadata = status, type, url, size). Only approved official hosts are allowed.
+const IMPORT_HOSTS = ["volcano.si.edu", "www.ngdc.noaa.gov", "ngdc.noaa.gov", "www.ncei.noaa.gov", "ncei.noaa.gov", "earthquake.usgs.gov", "paleobiodb.org", "training.paleobiodb.org", "whc.unesco.org", "query.wikidata.org", "www.wikidata.org", "api.gbif.org", "zenodo.org", "www.naturalearthdata.com", "naciscdn.org", "data.giss.nasa.gov", "www.ncdc.noaa.gov", "psl.noaa.gov", "www.nhc.noaa.gov", "www.spc.noaa.gov", "eonet.gsfc.nasa.gov", "ssd.jpl.nasa.gov", "cneos.jpl.nasa.gov", "www.lpi.usra.edu", "impact.uwo.ca", "api.iucnredlist.org", "en.wikipedia.org"];
+async function runImports(env) {
+  if (!env.IMPORTS) return; const list = await env.IMPORTS.list({ prefix: "job:", limit: 5 });
+  for (const k of list.keys) {
+    const id = k.name.slice(4); let job; try { job = JSON.parse(await env.IMPORTS.get(k.name)); } catch (e) { await env.IMPORTS.delete(k.name); continue; }
+    let meta = { url: job.url, status: 0, type: "", size: 0, at: Date.now() }, body = new Uint8Array();
+    try {
+      const u = new URL(job.url); if (u.protocol !== "https:" || !IMPORT_HOSTS.includes(u.hostname)) { meta.status = 403; meta.error = "host not on the approved list"; }
+      else {
+        const headers = { "user-agent": "HumanityLive/1.0 (educational Earth history simulation; buildswithdevin@gmail.com)", accept: job.accept || "*/*" };
+        if (job.method === "POST") headers["content-type"] = job.contentType || "application/x-www-form-urlencoded";
+        const r = await fetch(u.toString(), { method: job.method === "POST" ? "POST" : "GET", headers, body: job.method === "POST" ? job.body || "" : undefined, redirect: "follow" });
+        meta.status = r.status; meta.type = r.headers.get("content-type") || ""; const buf = new Uint8Array(await r.arrayBuffer());
+        if (buf.length > 24 * 1024 * 1024) { meta.error = "too big (over 24 MB); filter the request"; meta.size = buf.length; } else { body = buf; meta.size = buf.length; }
+      }
+    } catch (e) { meta.error = String(e).slice(0, 300); }
+    await env.IMPORTS.put("res:" + id, body, { metadata: meta, expirationTtl: 3 * 86400 }); await env.IMPORTS.delete(k.name);
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url), room = env.ROOM.get(env.ROOM.idFromName("world"));
@@ -176,7 +200,8 @@ export default {
     if (url.pathname === "/api/push/follow" && request.method === "POST") return room.fetch(new Request(url.origin + "/follow", { method: "POST", body: await request.text() }));
     return env.ASSETS.fetch(request);
   },
-  async scheduled(ev, env, ctx) {
+  async scheduled(event, env, ctx) {
+    if (event.cron === "* * * * *") { ctx.waitUntil(runImports(env)); return; }
     const room = env.ROOM.get(env.ROOM.idFromName("world"));
     ctx.waitUntil((async () => { const ev = await (await env.ASSETS.fetch(new Request("https://assets.local/events.json"))).json(); await room.alerts(ev); await room.followAlerts(); })());
   },
