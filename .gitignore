@@ -10,3 +10,4 @@ tools/changelog.json
 tools/quakes.json
 tools/package.json
 tools/package-lock.json
+tools/species.json
