@@ -344,7 +344,7 @@ const SEA=[[-70000,.06],[-60000,.07],[-30000,.07],[-26000,.1],[-19000,.1],[-1400
 const ICEF=[[-70000,.45],[-60000,.6],[-40000,.6],[-29000,.85],[-26000,1],[-19000,1],[-15000,.7],[-12000,.45],[-10000,.22],[-8000,.06],[-6500,0]];
 const GRN=[[-11000,0],[-9000,1],[-4500,1],[-3000,0]];
 let CLIM={sea:-1,ice:-1,g:-1},climT=0;
-const tex=document.createElement('canvas'),TW=2048,TH=1024;tex.width=TW;tex.height=TH;const tctx=tex.getContext('2d');
+const RELK=34;const tex=document.createElement('canvas'),TW=2048,TH=1024;const RELF=new Float32Array(TW*TH),RELT=new Float32Array(TW*TH);tex.width=TW;tex.height=TH;const tctx=tex.getContext('2d');
 const spc=document.createElement('canvas');spc.width=1024;spc.height=512;const sctx=spc.getContext('2d');
 const LC=new Float32Array(N*3),OC=new Float32Array(N*3);
 function biomeCol(k,lat,E,ice,g,land){
@@ -367,7 +367,6 @@ function biomeCol(k,lat,E,ice,g,land){
   else if((b===4&&(m>.7||E>.55))){x=13;c=[34,64,44]}}
  BIX[k]=land?x:0;
  if(E>.7&&b!==1&&b!==9){const f=clamp((E-.7)/.4,0,.6);c=[lerp(c[0],120,f),lerp(c[1],110,f),lerp(c[2],98,f)]}
- if(land){const i=k%GW,j=(k/GW)|0,e0=E0[k],ew=E0[j*GW+(i+GW-1)%GW],en=j>0?E0[k-GW]:e0,sh=clamp(1+((ew-e0)+(en-e0))*.9,.62,1.35);c=[c[0]*sh,c[1]*sh,c[2]*sh]}
  BI[k]=land?b:0;return[c[0]*nz,c[1]*nz,c[2]*nz]}
 const MEDR=[[39,10,6,16],[36,-120.5,4.5,3],[-34,-71,3.5,1.8],[-33.8,19.5,1.8,3],[-32.5,116.5,3,3.5],[-35,138.5,2,3]],WETL=[[-17.5,-57,4,3],[7.5,30.5,2.5,2],[-19.3,22.9,1.2,1.4],[25.8,-80.8,.9,.8],[31,47,1,1.2],[7,-68,2,4],[-3.5,-73.5,1.5,2],[61,73,4,8],[50,-95,3,6]];
 function coastal(k){const i=k%GW,j=(k/GW)|0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const jj=j+b;if(jj<0||jj>=GH)continue;if(!LAND[jj*GW+(i+a+GW)%GW])return true}return false}
@@ -386,22 +385,32 @@ function applyClimate(Y,force){
    if(!land&&DIST[k]<=3&&REEFS.some(r=>ell(lat,lonOf(k%GW),r)<1)){const bl=clamp((Y-2030)/50,0,.7);o=[lerp(60,215,bl),lerp(196,226,bl),lerp(190,214,bl)]}
    OC[k*3]=o[0];OC[k*3+1]=o[1];OC[k*3+2]=o[2];
    let ih=0;if(BI[k]===1&&lat>-60&&land)ih=.12*ice;
-   if(land&&BI[k]!==6&&BI[k]!==1&&BI[k]!==0){const sl=lat>0?60-18*Math.max(0,SEAS)-(E>.6?12:0):-(60-18*Math.max(0,-SEAS))+(E>.6?12:0);if((lat>0&&lat>sl)||(lat<0&&lat<sl)){LC[k*3]=lerp(LC[k*3],236,.8);LC[k*3+1]=lerp(LC[k*3+1],240,.8);LC[k*3+2]=lerp(LC[k*3+2],245,.8)}}
+   if(land&&BI[k]!==6&&BI[k]!==1&&BI[k]!==0){const up=clamp((E-.35)/.6,0,1)*14,sl=lat>0?60-18*Math.max(0,SEAS)-up:-(60-18*Math.max(0,-SEAS))+up,f=clamp((lat>0?lat-sl:sl-lat)/4+.25,0,1)*.8;if(f>0){LC[k*3]=lerp(LC[k*3],236,f);LC[k*3+1]=lerp(LC[k*3+1],240,f);LC[k*3+2]=lerp(LC[k*3+2],245,f)}}
    HG[k]=land?.035+Math.max(E,0)*.32+ih:-.025}}
+ // soften the 0.5° colour grid so biomes, snow and mountains blend instead of showing as blocks
+ {const T2=new Float32Array(LC);for(let j=1;j<GH-1;j++)for(let i=0;i<GW;i++){const k=j*GW+i;if(!(paleo?SRC[k]>=0:EC[k]>-CLIM.sea))continue;let r=0,g=0,b=0,w=0;
+  for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){const kk=(j+dj)*GW+(i+di+GW)%GW;if(!(paleo?SRC[kk]>=0:EC[kk]>-CLIM.sea))continue;const ww=dj||di?(dj&&di?.5:1):2;r+=LC[kk*3]*ww;g+=LC[kk*3+1]*ww;b+=LC[kk*3+2]*ww;w+=ww}
+  if(w){T2[k*3]=r/w;T2[k*3+1]=g/w;T2[k*3+2]=b/w}}LC.set(T2)}
  const img=tctx.createImageData(TW,TH),D=img.data,simg=sctx.createImageData(1024,512),SD=simg.data;
  const sx=GW/TW,sy=GH/TH;
  for(let y=0;y<TH;y++){const gy=y*sy+sy/2-.5,j0=clamp(Math.floor(gy),0,GH-1),j1=Math.min(GH-1,j0+1),fy=clamp(gy-j0,0,1);
   for(let x=0;x<TW;x++){const gx=x*sx+sx/2-.5,i0f=Math.floor(gx),fx=gx-i0f,i0=(i0f+GW)%GW,i1=(i0+1)%GW;
    const a=j0*GW+i0,b=j0*GW+i1,c=j1*GW+i0,d=j1*GW+i1,w0=(1-fx)*(1-fy),w1=fx*(1-fy),w2=(1-fx)*fy,w3=fx*fy;
-   const e=EC[a]*w0+EC[b]*w1+EC[c]*w2+EC[d]*w3+(hash(x,y)-.5)*.012+(vn(x/6,y/6)-.5)*.05;
-   const land=e>-sea,C=land?LC:OC,p=(y*TW+x)*4;
+   const eb=EC[a]*w0+EC[b]*w1+EC[c]*w2+EC[d]*w3,e=eb+(hash(x,y)-.5)*.012+(vn(x/6,y/6)-.5)*.05;
+   const land=e>-sea,C=land?LC:OC,p=(y*TW+x)*4;RELF[y*TW+x]=land?Math.max(eb,0)+(vn(x/3,y/3)-.5)*.02*Math.min(1,eb*2):-1;
    D[p]=C[a*3]*w0+C[b*3]*w1+C[c*3]*w2+C[d*3]*w3;D[p+1]=C[a*3+1]*w0+C[b*3+1]*w1+C[c*3+1]*w2+C[d*3+1]*w3;D[p+2]=C[a*3+2]*w0+C[b*3+2]*w1+C[c*3+2]*w2+C[d*3+2]*w3;D[p+3]=255;
    if(!(x&1)&&!(y&1)){const q=((y>>1)*1024+(x>>1))*4,v=land?10:(D[p]>200?30:110);SD[q]=SD[q+1]=SD[q+2]=v;SD[q+3]=255}}}
+ // shaded relief: light from the north-west so mountains, ridges and valleys stand out at every height
+ {const W=TW,H=TH,src=RELF,tmp=RELT,rr=4;for(let pass=0;pass<2;pass++){for(let y=0;y<H;y++){let s=0;const o=y*W;for(let x=-rr;x<=rr;x++)s+=Math.max(0,src[o+(x+W)%W]);for(let x=0;x<W;x++){tmp[o+x]=s/(2*rr+1);s+=Math.max(0,src[o+(x+rr+1)%W])-Math.max(0,src[o+(x-rr+W)%W])}}
+  for(let x=0;x<W;x++){let s=0;for(let y=-rr;y<=rr;y++)s+=tmp[clamp(y,0,H-1)*W+x];for(let y=0;y<H;y++){const k=y*W+x;const v=s/(2*rr+1);src[k]=src[k]<0?-1:v;s+=tmp[Math.min(H-1,y+rr+1)*W+x]-tmp[Math.max(0,y-rr)*W+x]}}}}
+ for(let y=1;y<TH-1;y++){const cl=Math.max(.2,Math.cos((90-(y+.5)/TH*180)*DEG));for(let x=0;x<TW;x++){const k=y*TW+x,h=RELF[k];if(h<0)continue;const xl=x?k-1:k+TW-1,xr=x<TW-1?k+1:k-TW+1;
+  const hl=RELF[xl]<0?h:RELF[xl],hr=RELF[xr]<0?h:RELF[xr],hu=RELF[k-TW]<0?h:RELF[k-TW],hd=RELF[k+TW]<0?h:RELF[k+TW];
+  const gx=(hr-hl)/cl,gy=hd-hu,s=clamp(1+(-gx*.7-gy*.7)*-RELK+h*.04,.66,1.38),p=k*4;D[p]=Math.min(255,D[p]*s);D[p+1]=Math.min(255,D[p+1]*s);D[p+2]=Math.min(255,D[p+2]*s)}}
  tctx.putImageData(img,0,0);sctx.putImageData(simg,0,0);
  if(!paleo){tctx.strokeStyle='rgba(58,112,150,.95)';tctx.lineCap=tctx.lineJoin='round';
   {const gk=clamp((simY+5.5e6)/(3.5e6),0,1);if(gk>0&&simY>-6e6){const GC=[[36.87,-111.6],[36.6,-111.85],[36.25,-111.95],[36.1,-112.1],[36.2,-112.6],[36.3,-113.1],[36.05,-113.8]];tctx.strokeStyle=`rgba(120,52,30,${.4+.5*gk})`;tctx.lineWidth=1+gk*3.5;tctx.beginPath();GC.forEach((p,i)=>{const X=(p[1]+180)/360*TW,Yp=(90-p[0])/180*TH;i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp)});tctx.stroke();tctx.strokeStyle='rgba(58,112,150,.95)'}}
   if(WATER){const P=(c)=>[(c[0]+180)/360*TW,(90-c[1])/180*TH];tctx.fillStyle='rgb(52,104,146)';for(const l of WATER.l){if(l[0]>8)continue;tctx.beginPath();let px=null;l[2].forEach((c,i)=>{const[X,Yp]=P(c);if(i&&Math.abs(X-px)>TW/2){tctx.moveTo(X,Yp)}else i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp);px=X});tctx.closePath();tctx.fill()}
-   for(const r of WATER.r){tctx.lineWidth=Math.max(.7,2.4-r[0]*.22);tctx.beginPath();let px=null;r[1].forEach((c,i)=>{const[X,Yp]=P(c);if(!i||Math.abs(X-px)>TW/2)tctx.moveTo(X,Yp);else tctx.lineTo(X,Yp);px=X});tctx.stroke()}}
+   for(const r of WATER.r){tctx.strokeStyle='rgba(74,140,196,.95)';tctx.lineWidth=Math.max(.8,2.6-r[0]*.24);tctx.beginPath();let px=null;r[1].forEach((c,i)=>{const[X,Yp]=P(c);if(!i||Math.abs(X-px)>TW/2)tctx.moveTo(X,Yp);else tctx.lineTo(X,Yp);px=X});tctx.stroke()}}
   else for(const r of RIVERS){tctx.lineWidth=1.4;tctx.beginPath();r.forEach((p,i)=>{const X=(p[1]+180)/360*TW,Yp=(90-p[0])/180*TH;i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp)});tctx.stroke()}}
  if(globeTex){globeTex.needsUpdate=true;specTex.needsUpdate=true}
  if(globeGeo)updGlobeHeights();
@@ -416,7 +425,7 @@ const biomeAt=(lat,lon)=>BI[clamp(Math.floor((90-lat)*2),0,GH-1)*GW+((Math.floor
 const canvas=$('c');(()=>{let ok=false;try{const c=document.createElement('canvas');ok=!!(window.WebGLRenderingContext&&(c.getContext('webgl')||c.getContext('experimental-webgl')))}catch(e){}if(!ok){$('load').innerHTML='Humanity, Live needs 3D graphics (WebGL), and this browser has it turned off.<br>Try Safari or Chrome on your phone or computer.';throw new Error('no webgl')}})();
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x03050a);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x03050a);if(window.__TEST)window.__R={renderer,scene};
 const camera=new THREE.PerspectiveCamera(55,1,.01,4000);
 const sun=new THREE.DirectionalLight(0xfff1dc,1.15);scene.add(sun);scene.add(sun.target);
 const amb=new THREE.AmbientLight(0x9aaad0,.46);scene.add(amb);
@@ -975,9 +984,12 @@ const GIANTS=[[[41.2,-124,3,.8],'con',2.4,2.6,'Coast redwood · the tallest tree
 function giantTree(lat,lon,b,r){for(const g of GIANTS){if(ell(lat,lon,g[0])<1&&r()<g[6])return[g[1],g[2]*(.85+r()*.3),g[3],g[4],g[5]]}return null}
 function wildPlants(){for(const z of WZ){if(z.type==='ocean'||!z.U){z.trees=[];continue}const r=srng(z.i*71+5),list=[];for(let i=0;i<120;i++){const rr=Math.sqrt(r())*1.4,a=r()*6.28,x=Math.cos(a)*rr,zz=Math.sin(a)*rr,X=z.o[0]+z.e[0]*x+z.so[0]*zz,Y=z.o[1]+z.e[1]*x+z.so[1]*zz,Z=z.o[2]+z.e[2]*x+z.so[2]*zz,p=ll(X,Y,Z),b=biomeAt(p[0],p[1]);const y=gY(z,x,zz);if(y===null||b<=1)continue;
  const dens={3:.6,4:.5,8:.7,7:.18,5:.05,6:.02,2:.02,9:.2}[b]||0;if(r()<dens){const ty=b===3||b===9||b===2?'con':b===8?'palm':'broad';const G=simY>-3e6?giantTree(p[0],p[1],b,r):null;if(G)list.push([G[0],x,y,zz,G[1],b,G[4],G[2],G[3]]);else list.push([ty,x,y,zz,.8+r()*.5,b,undefined,b===7?.55:1,treeName(ty,b,z.lat,z.lon,simY)])}else list.push(['tuft',x,y,zz,.9+r()*.7,b,[0x9a9a50,0x6f9a48,0xb0a050][(r()*3)|0],1,treeName('tuft',b,z.lat,z.lon,simY)])}z.trees=list;z.built=true}treesDirty=true}
-function rebuildTrees(){const cnt={con:0,broad:0,palm:0,shrub:0,tuft:0,flower:0,snag:0},col={con:[0x2f5a36,0x3a6a3c,0x264d30],broad:[0x4a7a3a,0x5a8a40,0x3f6e34,0x6b8a3a],palm:[0x3f7a34,0x4f8a3a],shrub:[0x7a7a4a,0x8a8050]};
- for(const s of [...S,...WZ]){if(!s.built||!s.trees)continue;for(const t of s.trees){const m=treeM[t[0]];const i=cnt[t[0]];if(i>=m.instanceMatrix.count)continue;cnt[t[0]]++;
+const TREE_LIM={con:46,broad:46,palm:40,shrub:26,tuft:13,flower:11,snag:24};let TCP=new THREE.Vector3(1e9,0,0),TCA=0,tcT=0;
+function treeCull(dt){tcT-=dt;if(tcT>0)return;tcT=.35;const p=camera.position,d=p.distanceTo(TCP);if(d>Math.max(.6,TCA*.12)||Math.abs(cam.alt-TCA)>TCA*.15)treesDirty=true}
+function rebuildTrees(){const CP=camera.position;TCP.copy(CP);TCA=cam.alt;const qf=QG.lvl===2||LITE?.6:QG.lvl===1?.8:1;const cnt={con:0,broad:0,palm:0,shrub:0,tuft:0,flower:0,snag:0},col={con:[0x2f5a36,0x3a6a3c,0x264d30],broad:[0x4a7a3a,0x5a8a40,0x3f6e34,0x6b8a3a],palm:[0x3f7a34,0x4f8a3a],shrub:[0x7a7a4a,0x8a8050]};
+ for(const s of [...S,...WZ]){if(!s.built||!s.trees)continue;const sd=Math.hypot(s.o[0]-CP.x,s.o[1]-CP.y,s.o[2]-CP.z);if(sd>60*qf)continue;for(const t of s.trees){const m=treeM[t[0]];const i=cnt[t[0]];if(i>=m.instanceMatrix.count)continue;
   const x=t[1],y=t[2],z=t[3],sc=t[4],px=s.o[0]+s.e[0]*x+s.so[0]*z+s.u[0]*y,py=s.o[1]+s.e[1]*x+s.so[1]*z+s.u[1]*y,pz=s.o[2]+s.e[2]*x+s.so[2]*z+s.u[2]*y;
+  if(Math.hypot(px-CP.x,py-CP.y,pz-CP.z)>TREE_LIM[t[0]]*qf*Math.max(1,sc*(t[7]||1)*.8))continue;cnt[t[0]]++;
   const ra=(i*2.39996)%6.283,fx=s.so[0]*Math.cos(ra)+s.e[0]*Math.sin(ra),fy=s.so[1]*Math.cos(ra)+s.e[1]*Math.sin(ra),fz=s.so[2]*Math.cos(ra)+s.e[2]*Math.sin(ra);setInst(m.instanceMatrix.array,i*16,px,py,pz,s.u[0],s.u[1],s.u[2],fx,fy,fz,sc,t[7]);
   if(t[6]!==undefined)_c.setHex(t[6]);else{_c.setHex(col[t[0]][(i*7)%col[t[0]].length]);if(t[5]===7)_c.setHex(0x7a8a3a);if(t[0]==='broad'&&t[5]===4&&simY>-3e6){const lat=s.lat,mo=new Date().getUTCMonth(),aut=lat>0?(mo===9||mo===10):(mo===3||mo===4),bare=lat>0?(mo===11||mo<=2):(mo>=5&&mo<=7);if(aut)_c.setHex([0xd2691e,0xc0392b,0xe0a526,0xb8860b][i%4]);else if(bare)_c.setHex(0x6b5a4a)}}m.instanceColor.setXYZ(i,_c.r,_c.g,_c.b)}}
  for(const k in treeM){treeM[k].count=cnt[k]||0;treeM[k].instanceMatrix.needsUpdate=true;treeM[k].instanceColor.needsUpdate=true}treesDirty=false}
@@ -1149,10 +1161,10 @@ function rebuildWild(){WA=[];for(const z of WZ){if(!z.U){frameSite(z);z.rad=.3}c
  const cnt={};for(const a of WA){const m=a.sp.m,M=WMESH[m];if(!M||m==='swarm')continue;const i=cnt[m]=(cnt[m]||0);cnt[m]++;if(i>=M.instanceMatrix.count)continue;_c.setHex(a.sp.c);M.instanceColor.setXYZ(i,_c.r,_c.g,_c.b);if(m==='hum'){_c.setHex(a.type==='robot'?0xb8c0c8:0x4a3426);homH.instanceColor.setXYZ(i,_c.r,_c.g,_c.b)}}
  for(const k in WMESH)WMESH[k].instanceColor.needsUpdate=true;homH.instanceColor.needsUpdate=true}
 let WMESH={},HUMN=0,SWN=0;
-function updWild(dt,T){const cu=cam.t,near=cam.alt<25,cnt={};SWN=0;
- for(const z of WZ){z.cx+=z.dx*dt*.0015;z.cz+=z.dz*dt*.0015;if(Math.hypot(z.cx,z.cz)>1.2){z.dx=-z.cx;z.dz=-z.cz}if(rnd()<dt*.02){z.dx=rnd()-.5;z.dz=rnd()-.5}}
+function updWild(dt,T){const cu=cam.t,near=cam.alt<25,cnt={};SWN=0;const CP=camera.position,WL2=(QG.lvl===2||LITE?24:34)**2;
+ for(const z of WZ){z.d2=z.o?((z.o[0]-CP.x)**2+(z.o[1]-CP.y)**2+(z.o[2]-CP.z)**2)/WL2:9e9;z.cx+=z.dx*dt*.0015;z.cz+=z.dz*dt*.0015;if(Math.hypot(z.cx,z.cz)>1.2){z.dx=-z.cx;z.dz=-z.cz}if(rnd()<dt*.02){z.dx=rnd()-.5;z.dz=rnd()-.5}}
  const night=z=>z.day<-.06;
- for(const a of WA){const z=a.zo,sp=a.sp,M=WMESH[sp.m];if(!M)continue;if(z.N&&z.K[a.type]&&a.idx>=Math.ceil(z.nB[a.type]*z.N[a.type]/z.K[a.type]))continue;const o=z.o,e=z.e,u=z.u,so=z.so;let px,py,pz,fx,fy,fz,sc=sp.s,sy=sp.sy||1;
+ for(const a of WA){const z=a.zo,sp=a.sp,M=WMESH[sp.m];if(!M)continue;if(sp.m!=='whale'&&z.d2>Math.max(1,(sp.s||1)*(sp.sy||1))**2){a.wx=undefined;continue}if(z.N&&z.K[a.type]&&a.idx>=Math.ceil(z.nB[a.type]*z.N[a.type]/z.K[a.type]))continue;const o=z.o,e=z.e,u=z.u,so=z.so;let px,py,pz,fx,fy,fz,sc=sp.s,sy=sp.sy||1;
   if(sp.hab==='s'){if(!z.water)continue;a.x+=Math.cos(a.h)*dt*.01;a.zz+=Math.sin(a.h)*dt*.01;if(Math.hypot(a.x,a.zz)>2)a.h+=Math.PI;if(rnd()<dt*.05)a.h+=(rnd()-.5);
    const yy=Math.sin(T*.5+a.ph)*.006-.061;px=o[0]+e[0]*a.x+so[0]*a.zz+u[0]*yy;py=o[1]+e[1]*a.x+so[1]*a.zz+u[1]*yy;pz=o[2]+e[2]*a.x+so[2]*a.zz+u[2]*yy;
    fx=e[0]*Math.cos(a.h)+so[0]*Math.sin(a.h);fy=e[1]*Math.cos(a.h)+so[1]*Math.sin(a.h);fz=e[2]*Math.cos(a.h)+so[2]*Math.sin(a.h)}
@@ -1401,7 +1413,7 @@ function pickTarget(a,s){const t=s.rt!==undefined&&s.tier<0?s.rt:Math.max(0,s.ti
   default:ring(.7,2.3)}}
  let g=0;while(gH(s,x,z)<0&&g++<4){x*=.5;z*=.5}
  a.tx=x;a.tz=z;a.ty=gY(s,x,z)||0;a.w0=w}
-function updAgents(dt,T){const ba=bodyM.instanceMatrix.array,ha=headM.instanceMatrix.array;let n=0;
+function updAgents(dt,T){const ba=bodyM.instanceMatrix.array,ha=headM.instanceMatrix.array,CP=camera.position,cx=CP.x,cy=CP.y,cz=CP.z,FAR2=(QG.lvl===2||LITE?16:22)**2,bc=bodyM.instanceColor,hc=headM.instanceColor;let n=0;
  for(const a of A){const s=S[a.s];let px,py,pz,ux,uy,uz,fx,fy,fz,sc,hide=false;const age=simY-a.b;sc=age<16?.5+age/16*.5:1;
   if(a.tr){const tr=a.tr,f=S[tr.f];tr.t+=dt/tr.dur;if(tr.t>=1){a.tr=null;s.pend=Math.max(0,s.pend-1);initVis(a);if(!s.pend&&!quiet&&s.pop>0){const nm=nameAt(s,simY);addEv(simY,`${nm} is settled`,s.k,true)}continue}
    const tt=clamp(tr.t-tr.lag,0,1),u=f.U.clone().lerp(s.U,tt).normalize(),u2=f.U.clone().lerp(s.U,Math.min(1,tt+.002)).normalize(),fw=u2.sub(u);fw.addScaledVector(u,-fw.dot(u));if(fw.lengthSq()<1e-12)fw.set(1,0,0);fw.normalize();
@@ -1417,11 +1429,11 @@ function updAgents(dt,T){const ba=bodyM.instanceMatrix.array,ha=headM.instanceMa
    const sh=Math.sin(a.h),ch=Math.cos(a.h),o=s.o,e=s.e,u=s.u,so=s.so,bob=a.mv?Math.abs(Math.sin(T*10+a.id))*.0016:0;
    px=o[0]+e[0]*a.x+so[0]*a.z+u[0]*(a.y+bob);py=o[1]+e[1]*a.x+so[1]*a.z+u[1]*(a.y+bob);pz=o[2]+e[2]*a.x+so[2]*a.z+u[2]*(a.y+bob);
    ux=u[0];uy=u[1];uz=u[2];fx=e[0]*sh+so[0]*ch;fy=e[1]*sh+so[1]*ch;fz=e[2]*sh+so[2]*ch}
-  a.wx=px;a.wy=py;a.wz=pz;a.vis=!hide;
-  setInst(ba,n*16,px,py,pz,ux,uy,uz,fx,fy,fz,hide?0:sc);
-  for(let k=0;k<16;k++)ha[n*16+k]=ba[n*16+k];a.wi=n;n++}
+  a.wx=px;a.wy=py;a.wz=pz;if(!hide&&(px-cx)*(px-cx)+(py-cy)*(py-cy)+(pz-cz)*(pz-cz)>FAR2)hide=true;a.vis=!hide;if(hide){a.wi=-1;continue}
+  setInst(ba,n*16,px,py,pz,ux,uy,uz,fx,fy,fz,sc);
+  for(let k=0;k<16;k++)ha[n*16+k]=ba[n*16+k];_c.setHex(a.cl);bc.setXYZ(n,_c.r,_c.g,_c.b);const sk=a.skc||(a.skc=skinCol(a.skin));hc.setXYZ(n,sk.r,sk.g,sk.b);a.wi=n;n++}
  bodyM.count=headM.count=n;bodyM.instanceMatrix.needsUpdate=headM.instanceMatrix.needsUpdate=true;
- if(colorsDirty){let i=0;for(const a of A){_c.setHex(a.cl);bodyM.instanceColor.setXYZ(i,_c.r,_c.g,_c.b);const k=skinCol(a.skin);headM.instanceColor.setXYZ(i,k.r,k.g,k.b);i++}bodyM.instanceColor.needsUpdate=headM.instanceColor.needsUpdate=true;colorsDirty=false}}
+ bc.needsUpdate=hc.needsUpdate=true;colorsDirty=false}
 let boatN=0;
 function updAnimals(dt,T){const aa=aniM.instanceMatrix.array,ca=carM.instanceMatrix.array;let na=0,nc=0;
  for(const a of ANIMS){const s=S[a.s];if(!s.built)continue;
@@ -1436,6 +1448,7 @@ function updAnimals(dt,T){const aa=aniM.instanceMatrix.array,ca=carM.instanceMat
 
 // ================== camera / drone ==================
 let followAni=null;const cam={t:new THREE.Vector3(),alt:1.2,h:.6,fly:null,idle:0,tour:false,tourT:0};
+if(window.__TEST)window.__C={cam,v3:(a,b)=>v3(a,b,1)};
 const tiltFor=alt=>lerp(1.12,0,Math.pow(clamp((alt-.25)/70,0,1),.45));
 function camFrame(){const U=cam.t;const Nn=new THREE.Vector3(0,1,0).addScaledVector(U,-U.y);if(Nn.lengthSq()<1e-8)Nn.set(1,0,0);Nn.normalize();const E=new THREE.Vector3().crossVectors(Nn,U);const F=Nn.clone().multiplyScalar(Math.cos(cam.h)).addScaledVector(E,Math.sin(cam.h));return{U,F,Rt:new THREE.Vector3().crossVectors(F,U)}}
 function camUpdate(dt){
@@ -1491,7 +1504,7 @@ function countryShown(cc,Y){if(Y<1945)return false;const sovietBloc=['EE','LV','
 let CITY=null,cityP=null,cityT=0,cityT0=-1e9;const CLBL=[],KLBL={};
 const GROW={AF:2.4,AS:1.08,EU:.92,NA:1.15,SA:1.05,OC:1.25,AN:1};
 function cityGate(cc,ct){if(ct==='OC')return cc==='AU'?1788:cc==='NZ'?1840:cc==='PG'?1880:1850;if(ct==='SA')return 1540;if(ct==='NA'){if(['MX','GT','BZ','HN','SV','NI','CR','PA'].includes(cc))return 1521;if(['CU','DO','HT','JM','PR','TT','BS','BB'].includes(cc))return 1500;return 1600}return -3500}
-function cityPop(i,Y){const c=CITY,g=c.gate[i];if(Y<g)return 0;let p;if(Y<=2026.9){const r=worldPop(Y)/8.2e9;p=c.pop[i]*Math.pow(r,1.6)}else p=c.pop[i]*(1+((GROW[c.ct[i]]||1)-1)*clamp((Y-2026.9)/73.1,0,1));return p>=10000?p:0}
+let _cpY=NaN,_cpR=1;function cityPop(i,Y){const c=CITY,g=c.gate[i];if(Y<g)return 0;let p;if(Y<=2026.9){if(Y!==_cpY){_cpY=Y;_cpR=Math.pow(worldPop(Y)/8.2e9,1.6)}p=c.pop[i]*_cpR}else p=c.pop[i]*(1+((GROW[c.ct[i]]||1)-1)*clamp((Y-2026.9)/73.1,0,1));return p>=10000?p:0}
 let borderL=null;
 async function loadBorders(){try{const r=await fetch('borders.json');if(!r.ok)return;const L=await r.json(),pts=[];for(const c of L)for(const ring of c[2])for(let i=0;i<ring.length-1;i++){const a=ring[i],b=ring[i+1];if(Math.abs(a[0]-b[0])>90)continue;for(const p of[a,b]){const v=v3(p[1],p[0],R+Math.max(0,hAt(p[1],p[0]))+.03);pts.push(v.x,v.y,v.z)}}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pts),3));borderL=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.35,depthWrite:false}));borderL.frustumCulled=false;scene.add(borderL)}catch(e){}}
@@ -2419,12 +2432,16 @@ function rebuildAll(){for(const s of S){s.bkey='';}checkBuilds(true);rebuildAnim
 function siteKey(s){const t=tierAt(s,simY);if(t<-1)return'x';const lms=s.lm.filter(l=>simY>=l[0]&&(!l[2]||simY<l[2])).length;const lake=s.x.lake?Math.round(clamp((simY-1600)/300,0,1)*4):0;const hg=s.k==='istanbul'&&simY>=1453?1:0;return t+'|'+lms+'|'+lake+'|'+hg+(s.dirty?'|d'+Math.random():'')}
 function checkBuilds(all){let ch=false;for(const s of S){const k=siteKey(s);if(k!==s.bkey){s.dirty=false;buildSite(s,siteKey(s));ch=true;if(!all)break}}
  if(ch&&!all){rebuildPoints();rebuildRails();rebuildAnimals()}return ch}
-function frame(T){requestAnimationFrame(frame);const now=performance.now(),dt=Math.min(.1,(now-last)/1000);last=now;cam.idle+=dt;
+let cbT=0,IMS=null,imsN=-1;
+// upload only the part of each instance buffer that is in use (three.js would otherwise send the whole buffer every frame)
+function trimUploads(){if(!IMS||imsN!==scene.children.length){IMS=[];scene.traverse(o=>{if(o.isInstancedMesh)IMS.push(o)});imsN=scene.children.length}
+ for(const m of IMS){const c=Math.min(m.count,m.instanceMatrix.count);if(m.instanceMatrix.version&&m.instanceMatrix.updateRange)m.instanceMatrix.updateRange.count=Math.max(16,c*16);if(m.instanceColor&&m.instanceColor.updateRange)m.instanceColor.updateRange.count=Math.max(3,c*3)}}
+function frame(T){requestAnimationFrame(frame);const now=performance.now(),_t0=now,dt=Math.min(.1,(now-last)/1000);last=now;cam.idle+=dt;
  const Y=yearAt(curDay());
  updTM(dt);advance(Y);updImpact(dt);updPlumes(dt);updBig(dt);dynT-=dt;if(dynT<=0){dynT=1.2;updDyn()}
  // climate
  if(now-climT>(catching?1500:5000)){climT=now;if(season()!==SEASM){SEASM=new Date().getUTCMonth();if(SEASM!==-1&&simY>-3e6){CLIM.sig=null;applyClimate(simY,true);treesDirty=true}}if(applyClimate(simY)){for(const s of S)if(s.built)buildTrees(s,s.rt!==undefined&&s.tier<0?s.rt:s.tier);wildPlants()}}
- if(checkBuilds(false))treesDirty=true;if(treesDirty)rebuildTrees();
+ treeCull(dt);cbT-=dt;if(cbT<=0){cbT=catching?.15:.4;if(checkBuilds(false))treesDirty=true}if(treesDirty)rebuildTrees();
  herdT-=dt;if(herdT<=0){herdT=3;if(S.some(s=>s.built&&s.tier>=0&&herdFor(s,simY,s.tier).map(x=>x[0]).join()!==s.hkey))rebuildAnimals();if(WZ.some(z=>faunaFor(z,simY).map(x=>x.join(':')).join()!==z.key)){rebuildWild();rebuildPoints()}}
  nightT-=dt;if(nightT<=0){nightT=.25;updSun();nightCols()}
  boatN=0;updAgents(dt,now/1000);boatM.instanceMatrix.needsUpdate=true;boatM.instanceColor.needsUpdate=true;HUMN=0;updAnimals(dt,now/1000);updWild(dt,now/1000);updTransport(dt);
@@ -2433,7 +2450,7 @@ function frame(T){requestAnimationFrame(frame);const now=performance.now(),dt=Ma
  hudT-=dt;if(hudT<=0){hudT=.25;updHud();updPlace()}
  if(QG.lvl===0||(QG.alt=!QG.alt)){updLabels();updGeo()}if(borderL){borderL.visible=simY>=1945&&cam.alt>3;borderL.material.opacity=clamp((cam.alt-3)/20,0,.35)}cityT-=dt;if(cityT<=0){cityT=.5;updCityLabels();if(Math.floor(simY)!==Math.floor(cityT0)||nightT<=.26){updCities();cityT0=simY}}tagT-=dt;if(tagT<=0){tagT=.12;updTags()}
  saveT-=dt;if(saveT<=0){saveT=DB?60:20;save()}syncT-=dt;if(syncT<=0){syncT=45;syncCheck()}
- renderer.render(scene,camera);if(REC.on)recFrame()}
+trimUploads(); const _t1=performance.now();renderer.render(scene,camera);if(window.__PT){__PT.js+=_t1-_t0;__PT.r+=performance.now()-_t1;__PT.n++}if(REC.on)recFrame()}
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});

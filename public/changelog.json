@@ -1,6 +1,10 @@
 [
  {
   "when": "Nov 27",
+  "text": "Smoother on phones: far-away trees, people and animals are no longer drawn when they would be smaller than a pixel, cutting the work per frame roughly in half. Mountains, ridges and valleys are now shaded so the terrain stands out, the biome colours blend instead of showing blocks, and rivers are brighter."
+ },
+ {
+  "when": "Nov 27",
   "text": "Every prehistoric animal checked against the Paleobiology Database: each now lives only near real fossil sites of about its age, and a few wrong dates are fixed (the cave lion and steppe bison no longer survive to today). 30 new real animals, from Ornithomimus and Austroraptor to Hesperocyon, the American mastodon and the straight-tusked elephant; 10 kinds of insects; and 17 real fossil plants, from dawn redwoods and nipa palms to southern beech, growing where their fossils were found."
  },
  {
