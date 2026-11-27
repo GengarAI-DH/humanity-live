@@ -27,3 +27,4 @@ tools/interactions.json
 tools/shots/
 tools/__pycache__/
 tools/migrations.json
+tools/regions.json
