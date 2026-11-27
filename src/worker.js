@@ -5,6 +5,7 @@ import { DurableObject } from "cloudflare:workers";
 const J = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
 // ---------- the clock (same as the page) ----------
+const SERIAL_MAX = 71250000;
 const KN = [[0, -71.25e6], [5.21e6 / 86400, -66.04e6], [455, -70000], [575, -3000], [695, 1800], [825, 2100]];
 function dayAt(y) { if (y > 2100) return 825 + (y - 2100) * 365.25; for (let i = 1; i < KN.length; i++) if (y <= KN[i][1]) { const a = KN[i - 1], b = KN[i]; return a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]); } return 825; }
 
@@ -51,6 +52,11 @@ export class Room extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS cinst(uid TEXT, cid TEXT, serial INTEGER, ts INTEGER, PRIMARY KEY(cid, serial))");
       this.sql.exec("CREATE INDEX IF NOT EXISTS cinst_u ON cinst(uid, cid)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS cmint(cid TEXT PRIMARY KEY, n INTEGER)");
+      // serial numbers are drawn at random from 1 to 71,250,000 (one for every year the world covers); move the first test copies onto random numbers once
+      if (![...this.sql.exec("SELECT name FROM sqlite_master WHERE name='serial_v2'")].length) {
+        for (const r of [...this.sql.exec("SELECT cid,serial FROM cinst")]) this.sql.exec("UPDATE cinst SET serial=? WHERE cid=? AND serial=?", this.freeSerial(r.cid), r.cid, r.serial);
+        this.sql.exec("CREATE TABLE serial_v2(x INTEGER)");
+      }
       this.sql.exec("CREATE TABLE IF NOT EXISTS offer(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, give TEXT, want TEXT, ts INTEGER, status TEXT DEFAULT 'open', taker TEXT)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS ipday(ip TEXT, day TEXT, n INTEGER, PRIMARY KEY(ip, day))");
     });
@@ -132,7 +138,8 @@ export class Room extends DurableObject {
     if (!r) { if (!make) return null; const uid = crypto.randomUUID().replace(/-/g, "").slice(0, 20); this.sql.exec("INSERT INTO ckey VALUES(?,?,?)", kh, uid, Date.now()); this.sql.exec("INSERT OR IGNORE INTO cuser(uid,created) VALUES(?,?)", uid, Date.now()); r = { uid }; }
     return [...this.sql.exec("SELECT * FROM cuser WHERE uid=?", r.uid)][0];
   }
-  mint(uid, cid) { this.sql.exec("INSERT INTO cmint VALUES(?,1) ON CONFLICT(cid) DO UPDATE SET n=n+1", cid); const s = [...this.sql.exec("SELECT n FROM cmint WHERE cid=?", cid)][0].n; this.sql.exec("INSERT INTO cinst VALUES(?,?,?,?)", uid, cid, s, Date.now()); return s; }
+  freeSerial(cid) { let s = 0; for (let i = 0; i < 50; i++) { s = 1 + Math.floor(Math.random() * SERIAL_MAX); if (![...this.sql.exec("SELECT 1 FROM cinst WHERE cid=? AND serial=?", cid, s)].length) break; } return s; }
+  mint(uid, cid) { this.sql.exec("INSERT INTO cmint VALUES(?,1) ON CONFLICT(cid) DO UPDATE SET n=n+1", cid); const s = this.freeSerial(cid); this.sql.exec("INSERT INTO cinst VALUES(?,?,?,?)", uid, cid, s, Date.now()); return s; }
   move(from, to, cid) { const r = [...this.sql.exec("SELECT serial FROM cinst WHERE uid=? AND cid=? ORDER BY serial DESC LIMIT 1", from, cid)][0]; if (!r) return 0; this.sql.exec("UPDATE cinst SET uid=? WHERE cid=? AND serial=?", to, cid, r.serial); return r.serial; }
   cGive(uid, cid, k = 1) { for (let i = 0; i < k; i++) this.mint(uid, cid); }
   cHas(uid, cid) { return [...this.sql.exec("SELECT COUNT(*) AS n FROM cinst WHERE uid=? AND cid=?", uid, cid)][0].n; }

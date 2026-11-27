@@ -1,6 +1,6 @@
 # Handoff board
 
-Every automatic job reads this file at the start of its run and works on items for its own area first.
+Every automatic job reads this file at the start of its run, fixes items for its own area (about 10 minutes at most), and then still does its full normal run. Handoff fixes are extra, never instead of the main job.
 
 How to use it:
 - When you find a problem you are not going to fix this run, add it under the right owner: one line, what is wrong, where (file or data key), how you found it, today's date.
