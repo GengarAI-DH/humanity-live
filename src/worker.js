@@ -48,6 +48,9 @@ export class Room extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS cuser(uid TEXT PRIMARY KEY, gsub TEXT, name TEXT, created INTEGER, daily TEXT DEFAULT '', sday TEXT DEFAULT '', sn INTEGER DEFAULT 0)");
       this.sql.exec("CREATE UNIQUE INDEX IF NOT EXISTS cuser_g ON cuser(gsub)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS card(uid TEXT, cid TEXT, n INTEGER, first INTEGER, PRIMARY KEY(uid, cid))");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS cinst(uid TEXT, cid TEXT, serial INTEGER, ts INTEGER, PRIMARY KEY(cid, serial))");
+      this.sql.exec("CREATE INDEX IF NOT EXISTS cinst_u ON cinst(uid, cid)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS cmint(cid TEXT PRIMARY KEY, n INTEGER)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS offer(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, give TEXT, want TEXT, ts INTEGER, status TEXT DEFAULT 'open', taker TEXT)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS ipday(ip TEXT, day TEXT, n INTEGER, PRIMARY KEY(ip, day))");
     });
@@ -129,13 +132,18 @@ export class Room extends DurableObject {
     if (!r) { if (!make) return null; const uid = crypto.randomUUID().replace(/-/g, "").slice(0, 20); this.sql.exec("INSERT INTO ckey VALUES(?,?,?)", kh, uid, Date.now()); this.sql.exec("INSERT OR IGNORE INTO cuser(uid,created) VALUES(?,?)", uid, Date.now()); r = { uid }; }
     return [...this.sql.exec("SELECT * FROM cuser WHERE uid=?", r.uid)][0];
   }
-  cGive(uid, cid, k = 1) { this.sql.exec("INSERT INTO card VALUES(?,?,?,?) ON CONFLICT(uid,cid) DO UPDATE SET n=n+?", uid, cid, k, Date.now(), k); this.sql.exec("DELETE FROM card WHERE uid=? AND cid=? AND n<=0", uid, cid); }
-  cHas(uid, cid) { const r = [...this.sql.exec("SELECT n FROM card WHERE uid=? AND cid=?", uid, cid)][0]; return r ? r.n : 0; }
+  mint(uid, cid) { this.sql.exec("INSERT INTO cmint VALUES(?,1) ON CONFLICT(cid) DO UPDATE SET n=n+1", cid); const s = [...this.sql.exec("SELECT n FROM cmint WHERE cid=?", cid)][0].n; this.sql.exec("INSERT INTO cinst VALUES(?,?,?,?)", uid, cid, s, Date.now()); return s; }
+  move(from, to, cid) { const r = [...this.sql.exec("SELECT serial FROM cinst WHERE uid=? AND cid=? ORDER BY serial DESC LIMIT 1", from, cid)][0]; if (!r) return 0; this.sql.exec("UPDATE cinst SET uid=? WHERE cid=? AND serial=?", to, cid, r.serial); return r.serial; }
+  cGive(uid, cid, k = 1) { for (let i = 0; i < k; i++) this.mint(uid, cid); }
+  cHas(uid, cid) { return [...this.sql.exec("SELECT COUNT(*) AS n FROM cinst WHERE uid=? AND cid=?", uid, cid)][0].n; }
+  backfill(uid) { for (const r of [...this.sql.exec("SELECT cid,n FROM card WHERE uid=?", uid)]) { const have = this.cHas(uid, r.cid); for (let i = have; i < r.n; i++) this.mint(uid, r.cid); } this.sql.exec("DELETE FROM card WHERE uid=?", uid); }
   cMe(u) {
-    const cards = {}; for (const r of this.sql.exec("SELECT cid,n FROM card WHERE uid=?", u.uid)) cards[r.cid] = r.n;
+    this.backfill(u.uid); const cards = {}, ser = {}, minted = {};
+    for (const r of this.sql.exec("SELECT cid,serial FROM cinst WHERE uid=? ORDER BY serial", u.uid)) { cards[r.cid] = (cards[r.cid] || 0) + 1; (ser[r.cid] = ser[r.cid] || []).push(r.serial); }
+    for (const r of this.sql.exec("SELECT m.cid,m.n FROM cmint m WHERE m.cid IN (SELECT DISTINCT cid FROM cinst WHERE uid=?)", u.uid)) minted[r.cid] = r.n;
     const offers = [...this.sql.exec("SELECT id,give,want,ts FROM offer WHERE uid=? AND status='open'", u.uid)];
     const day = new Date().toISOString().slice(0, 10);
-    return { ok: true, id: u.uid.slice(0, 6), name: u.name || "", signedIn: !!u.gsub, cards, daily: u.daily !== day, spotsLeft: u.sday === day ? Math.max(0, 8 - u.sn) : 8, offers };
+    return { ok: true, id: u.uid.slice(0, 6), name: u.name || "", signedIn: !!u.gsub, cards, ser, minted, daily: u.daily !== day, spotsLeft: u.sday === day ? Math.max(0, 8 - u.sn) : 8, offers };
   }
   async cardsOp(op, b, ipH, ctx) {
     const day = new Date().toISOString().slice(0, 10), kh = b.k && /^[a-f0-9]{32,64}$/.test(b.k) ? await hash("k" + b.k) : null;
@@ -164,8 +172,7 @@ export class Room extends DurableObject {
       const g = b.g; let owner = [...this.sql.exec("SELECT uid FROM cuser WHERE gsub=?", g.sub)][0];
       if (!owner) { this.sql.exec("UPDATE cuser SET gsub=? WHERE uid=?", g.sub, u.uid); if (!u.name && g.name) { const nm = String(g.name).split(" ")[0].slice(0, 18); if (!checkText(nm, "name")) this.sql.exec("UPDATE cuser SET name=? WHERE uid=?", nm, u.uid); } return this.cMe(this.cUser(kh)); }
       if (owner.uid !== u.uid) { // this device joins the signed-in account and brings its cards along
-        for (const r of [...this.sql.exec("SELECT cid,n FROM card WHERE uid=?", u.uid)]) this.cGive(owner.uid, r.cid, r.n);
-        this.sql.exec("DELETE FROM card WHERE uid=?", u.uid); this.sql.exec("UPDATE ckey SET uid=? WHERE kh=?", owner.uid, kh);
+        this.backfill(u.uid); this.sql.exec("UPDATE cinst SET uid=? WHERE uid=?", owner.uid, u.uid); this.sql.exec("UPDATE ckey SET uid=? WHERE kh=?", owner.uid, kh);
       }
       return this.cMe(this.cUser(kh));
     }
@@ -176,16 +183,16 @@ export class Room extends DurableObject {
       if (!b.give || !b.want || b.give === b.want) return { ok: false, error: "Pick a card to give and a card you want." };
       if ([...this.sql.exec("SELECT COUNT(*) AS n FROM offer WHERE uid=? AND status='open'", u.uid)][0].n >= 5) return { ok: false, error: "You can have 5 open trades at a time." };
       if (!this.cHas(u.uid, b.give)) return { ok: false, error: "You don't have that card." };
-      this.cGive(u.uid, b.give, -1); // held until the trade completes or is cancelled
       this.sql.exec("INSERT INTO offer(uid,give,want,ts) VALUES(?,?,?,?)", u.uid, b.give, b.want, Date.now());
+      const oid = [...this.sql.exec("SELECT last_insert_rowid() AS id")][0].id; this.move(u.uid, "~o" + oid, b.give); // held until the trade completes or is cancelled
       return this.cMe(u);
     }
-    if (op === "cancel") { const o = [...this.sql.exec("SELECT * FROM offer WHERE id=? AND uid=? AND status='open'", b.id, u.uid)][0]; if (!o) return { ok: false, error: "Trade not found." }; this.sql.exec("UPDATE offer SET status='cancelled' WHERE id=?", o.id); this.cGive(u.uid, o.give); return this.cMe(u); }
+    if (op === "cancel") { const o = [...this.sql.exec("SELECT * FROM offer WHERE id=? AND uid=? AND status='open'", b.id, u.uid)][0]; if (!o) return { ok: false, error: "Trade not found." }; this.sql.exec("UPDATE offer SET status='cancelled' WHERE id=?", o.id); this.move("~o" + o.id, u.uid, o.give); return this.cMe(u); }
     if (op === "accept") {
       const o = [...this.sql.exec("SELECT * FROM offer WHERE id=? AND status='open'", b.id)][0]; if (!o) return { ok: false, error: "That trade is gone." };
       if (o.uid === u.uid) return { ok: false, error: "That's your own trade." };
       if (!this.cHas(u.uid, o.want)) return { ok: false, error: "You don't have the card they want." };
-      this.ctx.storage.transactionSync(() => { this.sql.exec("UPDATE offer SET status='done', taker=? WHERE id=?", u.uid, o.id); this.cGive(u.uid, o.want, -1); this.cGive(o.uid, o.want); this.cGive(u.uid, o.give); });
+      this.ctx.storage.transactionSync(() => { this.sql.exec("UPDATE offer SET status='done', taker=? WHERE id=?", u.uid, o.id); this.move(u.uid, o.uid, o.want); this.move("~o" + o.id, u.uid, o.give); });
       return { ...this.cMe(u), got: [o.give] };
     }
     return { ok: false, error: "Unknown" };
