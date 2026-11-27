@@ -38,6 +38,9 @@ export class Room extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS sub(ep TEXT PRIMARY KEY, json TEXT, ts INTEGER)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS sent(k TEXT PRIMARY KEY)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS idea(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, name TEXT, uid TEXT, text TEXT, k TEXT, votes INTEGER DEFAULT 0, status TEXT DEFAULT '')");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS wdoc(path TEXT PRIMARY KEY, json TEXT, ts INTEGER)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS wlease(id INTEGER PRIMARY KEY, holder TEXT, until INTEGER)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS report(mid INTEGER, uid TEXT, ts INTEGER, PRIMARY KEY(mid, uid))");
       this.sql.exec("CREATE TABLE IF NOT EXISTS fol(ep TEXT, title TEXT, at INTEGER, sent INTEGER DEFAULT 0, PRIMARY KEY(ep, title))");
       this.sql.exec("CREATE TABLE IF NOT EXISTS vote(iid INTEGER, uid TEXT, PRIMARY KEY(iid, uid))");
     });
@@ -47,6 +50,13 @@ export class Room extends DurableObject {
     if (url.pathname.endsWith("/sub")) { const b = await req.json(); if (!b || !b.endpoint || !/^https:\/\//.test(b.endpoint)) return J({ ok: false }, 400); this.sql.exec("INSERT OR REPLACE INTO sub VALUES(?,?,?)", b.endpoint, JSON.stringify(b), Date.now()); return J({ ok: true }); }
     if (url.pathname.endsWith("/unsub")) { const b = await req.json(); this.sql.exec("DELETE FROM sub WHERE ep=?", b.endpoint || ""); return J({ ok: true }); }
     if (url.pathname.endsWith("/stats")) return J(this.stats());
+    if (url.pathname.endsWith("/wlease")) { const b = await req.json().catch(() => ({})); const holder = String(b.holder || "").slice(0, 40), ttl = Math.min(120000, Math.max(10000, Number(b.ttlMs) || 90000)), now = Date.now(); if (!holder) return J({ acquired: false }, 400);
+      const cur = [...this.sql.exec("SELECT holder, until FROM wlease WHERE id=1")][0]; if (!cur || cur.until < now || cur.holder === holder) { this.sql.exec("INSERT OR REPLACE INTO wlease VALUES(1,?,?)", holder, now + ttl); return J({ acquired: true }); } return J({ acquired: false }); }
+    if (url.pathname.endsWith("/wget")) { const path = url.searchParams.get("path") || ""; const r = [...this.sql.exec("SELECT json FROM wdoc WHERE path=?", path)][0]; return new Response(r ? r.json : "null", { headers: { "content-type": "application/json", "cache-control": "no-store" } }); }
+    if (url.pathname.endsWith("/wset")) { const path = url.searchParams.get("path") || "", holder = url.searchParams.get("holder") || ""; if (!/^world\/(meta|a\d{1,3}|d\d{1,3})$/.test(path)) return J({ ok: false }, 400);
+      const cur = [...this.sql.exec("SELECT holder, until FROM wlease WHERE id=1")][0]; if (!cur || cur.holder !== holder || cur.until < Date.now()) return J({ ok: false, error: "not the lease holder" }, 409);
+      const body = await req.text(); if (body.length > 1500000) return J({ ok: false, error: "too big" }, 413); try { JSON.parse(body); } catch (e) { return J({ ok: false }, 400); }
+      this.sql.exec("INSERT OR REPLACE INTO wdoc VALUES(?,?,?)", path, body, Date.now()); return J({ ok: true }); }
     if (url.pathname.endsWith("/ideas")) return J(this.ideas());
     if (url.pathname.endsWith("/follow")) { const b = await req.json(); if (!b || !b.endpoint || !/^https:\/\//.test(b.endpoint)) return J({ ok: false }, 400); if (b.remove) this.sql.exec("DELETE FROM fol WHERE ep=? AND title=?", b.endpoint, String(b.remove)); for (const it of (b.items || []).slice(0, 50)) { if (typeof it.title !== "string" || typeof it.at !== "number") continue; this.sql.exec("INSERT OR IGNORE INTO fol(ep,title,at) VALUES(?,?,?)", b.endpoint, it.title.slice(0, 120), it.at); } return J({ ok: true }); }
     if (req.headers.get("Upgrade") !== "websocket") return J({ error: "expected websocket" }, 426);
@@ -81,12 +91,14 @@ export class Room extends DurableObject {
       this.broadcast({ t: "ideas_dirty" }); ws.send(JSON.stringify({ t: "iok" })); return;
     }
     if (m.t === "admin" && this.env.ADMIN_KEY && m.key === this.env.ADMIN_KEY) {
+      if (m.reports) { ws.send(JSON.stringify({ t: "reports", list: [...this.sql.exec("SELECT r.mid AS id, COUNT(*) AS n, m.name, m.text FROM report r JOIN msg m ON m.id=r.mid GROUP BY r.mid ORDER BY n DESC LIMIT 50")] })); }
       if (m.ideaDel) { this.sql.exec("DELETE FROM idea WHERE id=?", m.ideaDel); this.sql.exec("DELETE FROM vote WHERE iid=?", m.ideaDel); this.broadcast({ t: "ideas_dirty" }); }
       if (m.ideaStatus) { this.sql.exec("UPDATE idea SET status=? WHERE id=?", String(m.ideaStatus.status || "").slice(0, 20), m.ideaStatus.id); this.broadcast({ t: "ideas_dirty" }); }
       if (m.del) { this.sql.exec("DELETE FROM msg WHERE id=?", m.del); this.broadcast({ t: "del", id: m.del }); }
       if (m.banName) { const r = [...this.sql.exec("SELECT uid FROM msg WHERE name=? ORDER BY id DESC LIMIT 1", m.banName)][0]; if (r) { this.sql.exec("INSERT OR REPLACE INTO ban VALUES(?,?)", r.uid, now); this.sql.exec("DELETE FROM msg WHERE uid=?", r.uid); this.broadcast({ t: "purge", name: m.banName }); } }
       return;
     }
+    if (m.t === "report") { const id = Number(m.id); if (!id) return; this.sql.exec("INSERT OR IGNORE INTO report VALUES(?,?,?)", id, a.uid, now); const n = [...this.sql.exec("SELECT COUNT(*) AS n FROM report WHERE mid=?", id)][0].n; ws.send(JSON.stringify({ t: "reported", id })); if (n >= 3) { this.sql.exec("DELETE FROM msg WHERE id=?", id); this.broadcast({ t: "del", id }); } return; }
     if (m.t !== "say") return;
     const err = (e) => ws.send(JSON.stringify({ t: "err", e }));
     if ([...this.sql.exec("SELECT 1 FROM ban WHERE uid=?", a.uid)].length) return err("You can't post here.");
@@ -192,6 +204,8 @@ export default {
     const url = new URL(request.url), room = env.ROOM.get(env.ROOM.idFromName("world"));
     if (url.pathname === "/api/world") return J({ start: Number(env.WORLD_START), name: "Humanity, Live", vapid: env.VAPID_PUBLIC || null });
     if (url.pathname === "/api/live") return room.fetch(request);
+    if (url.pathname === "/api/wlease" && request.method === "POST") return room.fetch(new Request(url.origin + "/wlease", { method: "POST", body: await request.text() }));
+    if (url.pathname === "/api/wdoc") { if (request.method === "PUT") return room.fetch(new Request(url.origin + "/wset" + url.search, { method: "POST", body: await request.text() })); return room.fetch(new Request(url.origin + "/wget" + url.search)); }
     if (url.pathname === "/api/stats") return room.fetch(new Request(url.origin + "/stats"));
     if (url.pathname === "/api/wx") return realWeather(url, ctx);
     if (url.pathname === "/api/ideas") return room.fetch(new Request(url.origin + "/ideas"));
