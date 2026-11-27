@@ -386,7 +386,7 @@ const hDir=(x,y,z)=>{const p=ll(x,y,z);return hAt(p[0],p[1])};
 const biomeAt=(lat,lon)=>BI[clamp(Math.floor((90-lat)*2),0,GH-1)*GW+((Math.floor((lon+180)*2))%GW+GW)%GW];
 
 // ================== three setup ==================
-const canvas=$('c');
+const canvas=$('c');(()=>{let ok=false;try{const c=document.createElement('canvas');ok=!!(window.WebGLRenderingContext&&(c.getContext('webgl')||c.getContext('experimental-webgl')))}catch(e){}if(!ok){$('load').innerHTML='Humanity, Live needs 3D graphics (WebGL), and this browser has it turned off.<br>Try Safari or Chrome on your phone or computer.';throw new Error('no webgl')}})();
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x03050a);
