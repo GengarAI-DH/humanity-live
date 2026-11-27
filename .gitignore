@@ -26,3 +26,4 @@ tools/cards.json
 tools/interactions.json
 tools/shots/
 tools/__pycache__/
+tools/migrations.json
