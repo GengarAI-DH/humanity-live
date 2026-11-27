@@ -38,6 +38,7 @@ export class Room extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS sub(ep TEXT PRIMARY KEY, json TEXT, ts INTEGER)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS sent(k TEXT PRIMARY KEY)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS idea(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, name TEXT, uid TEXT, text TEXT, k TEXT, votes INTEGER DEFAULT 0, status TEXT DEFAULT '')");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS fol(ep TEXT, title TEXT, at INTEGER, sent INTEGER DEFAULT 0, PRIMARY KEY(ep, title))");
       this.sql.exec("CREATE TABLE IF NOT EXISTS vote(iid INTEGER, uid TEXT, PRIMARY KEY(iid, uid))");
     });
   }
@@ -46,6 +47,8 @@ export class Room extends DurableObject {
     if (url.pathname.endsWith("/sub")) { const b = await req.json(); if (!b || !b.endpoint || !/^https:\/\//.test(b.endpoint)) return J({ ok: false }, 400); this.sql.exec("INSERT OR REPLACE INTO sub VALUES(?,?,?)", b.endpoint, JSON.stringify(b), Date.now()); return J({ ok: true }); }
     if (url.pathname.endsWith("/unsub")) { const b = await req.json(); this.sql.exec("DELETE FROM sub WHERE ep=?", b.endpoint || ""); return J({ ok: true }); }
     if (url.pathname.endsWith("/stats")) return J(this.stats());
+    if (url.pathname.endsWith("/ideas")) return J(this.ideas());
+    if (url.pathname.endsWith("/follow")) { const b = await req.json(); if (!b || !b.endpoint || !/^https:\/\//.test(b.endpoint)) return J({ ok: false }, 400); if (b.remove) this.sql.exec("DELETE FROM fol WHERE ep=? AND title=?", b.endpoint, String(b.remove)); for (const it of (b.items || []).slice(0, 50)) { if (typeof it.title !== "string" || typeof it.at !== "number") continue; this.sql.exec("INSERT OR IGNORE INTO fol(ep,title,at) VALUES(?,?,?)", b.endpoint, it.title.slice(0, 120), it.at); } return J({ ok: true }); }
     if (req.headers.get("Upgrade") !== "websocket") return J({ error: "expected websocket" }, 426);
     const pair = new WebSocketPair(); const [c, s] = Object.values(pair);
     const ip = req.headers.get("cf-connecting-ip") || "", uid = await hash(ip + (this.env.SALT || "hl"));
@@ -112,7 +115,16 @@ export class Room extends DurableObject {
     let n = 0; for (const s of subs) { const r = await sendPush(s.ep, this.env); if (r === 404 || r === 410) this.sql.exec("DELETE FROM sub WHERE ep=?", s.ep); else n++; }
     return n;
   }
-  async lastAlert() { return (await this.ctx.storage.get("alert")) || null; }
+  async lastAlert(ep) { const g = (await this.ctx.storage.get("alert")) || null; if (ep) { const m = await this.ctx.storage.get("alert:" + await hash(ep)); if (m && (!g || m.ts >= g.ts)) return m; } return g; }
+  async followAlerts() {
+    if (!this.env.VAPID_PRIVATE) return 0; const now = Date.now(); let n = 0;
+    for (const r of [...this.sql.exec("SELECT ep,title,at FROM fol WHERE sent=0 AND at<=? LIMIT 200", now)]) {
+      this.sql.exec("UPDATE fol SET sent=1 WHERE ep=? AND title=?", r.ep, r.title);
+      await this.ctx.storage.put("alert:" + await hash(r.ep), { title: r.title, when: "", ts: now, follow: 1 });
+      const s = await sendPush(r.ep, this.env); if (s === 404 || s === 410) { this.sql.exec("DELETE FROM fol WHERE ep=?", r.ep); this.sql.exec("DELETE FROM sub WHERE ep=?", r.ep); } else n++;
+    }
+    return n;
+  }
 }
 
 async function hash(s) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(d)].slice(0, 12).map(b => b.toString(16).padStart(2, "0")).join(""); }
@@ -134,13 +146,15 @@ export default {
     if (url.pathname === "/api/world") return J({ start: Number(env.WORLD_START), name: "Humanity, Live", vapid: env.VAPID_PUBLIC || null });
     if (url.pathname === "/api/live") return room.fetch(request);
     if (url.pathname === "/api/stats") return room.fetch(new Request(url.origin + "/stats"));
+    if (url.pathname === "/api/ideas") return room.fetch(new Request(url.origin + "/ideas"));
     if (url.pathname === "/api/push/sub" && request.method === "POST") return room.fetch(new Request(url.origin + "/sub", { method: "POST", body: await request.text() }));
     if (url.pathname === "/api/push/unsub" && request.method === "POST") return room.fetch(new Request(url.origin + "/unsub", { method: "POST", body: await request.text() }));
-    if (url.pathname === "/api/alert") return J((await room.lastAlert()) || {});
+    if (url.pathname === "/api/alert") return J((await room.lastAlert(url.searchParams.get("ep") || "")) || {});
+    if (url.pathname === "/api/push/follow" && request.method === "POST") return room.fetch(new Request(url.origin + "/follow", { method: "POST", body: await request.text() }));
     return env.ASSETS.fetch(request);
   },
   async scheduled(ev, env, ctx) {
     const room = env.ROOM.get(env.ROOM.idFromName("world"));
-    ctx.waitUntil((async () => { const ev = await (await env.ASSETS.fetch(new Request("https://assets.local/events.json"))).json(); await room.alerts(ev); })());
+    ctx.waitUntil((async () => { const ev = await (await env.ASSETS.fetch(new Request("https://assets.local/events.json"))).json(); await room.alerts(ev); await room.followAlerts(); })());
   },
 };
