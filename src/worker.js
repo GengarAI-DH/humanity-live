@@ -154,6 +154,16 @@ export class Room extends DurableObject {
   }
   async cardsOp(op, b, ipH, ctx) {
     const day = new Date().toISOString().slice(0, 10), kh = b.k && /^[a-f0-9]{32,64}$/.test(b.k) ? await hash("k" + b.k) : null;
+    if (op === "top") {
+      const nm = "COALESCE(NULLIF(u.name,''),'Collector '||substr(u.uid,1,4))", real = "c.uid NOT LIKE '~%'";
+      const all = [...this.sql.exec(`SELECT ${nm} AS name, COUNT(DISTINCT c.cid) AS uniq, COUNT(*) AS total FROM cinst c JOIN cuser u ON u.uid=c.uid WHERE ${real} GROUP BY c.uid ORDER BY uniq DESC, total DESC LIMIT 20`)];
+      const ids = (b.season || []).slice(0, 400), ph = ids.map(() => "?").join(",") || "''";
+      const season = [...this.sql.exec(`SELECT ${nm} AS name, COUNT(DISTINCT c.cid) AS uniq FROM cinst c JOIN cuser u ON u.uid=c.uid WHERE ${real} AND c.cid IN (${ph}) GROUP BY c.uid ORDER BY uniq DESC LIMIT 20`, ...ids)];
+      const low = [...this.sql.exec(`SELECT c.cid, c.serial, ${nm} AS name FROM cinst c JOIN cuser u ON u.uid=c.uid WHERE ${real} ORDER BY c.serial ASC LIMIT 15`)];
+      const first = [...this.sql.exec(`SELECT f.cid, f.ts, ${nm} AS name FROM (SELECT cid, uid, MIN(ts) AS ts FROM cinst GROUP BY cid) f JOIN cuser u ON u.uid=f.uid ORDER BY f.ts DESC LIMIT 25`)];
+      const found = [...this.sql.exec("SELECT COUNT(*) AS n, COUNT(DISTINCT cid) AS kinds FROM cinst")][0];
+      return { ok: true, all, season, low, first, found };
+    }
     if (op === "offers") return { ok: true, offers: [...this.sql.exec("SELECT o.id,o.give,o.want,o.ts,u.name,substr(u.uid,1,6) AS who FROM offer o JOIN cuser u ON u.uid=o.uid WHERE o.status='open' ORDER BY o.id DESC LIMIT 200")] };
     if (!kh) return { ok: false, error: "Missing device key" };
     const u = this.cUser(kh, true);
@@ -203,6 +213,17 @@ export class Room extends DurableObject {
       return { ...this.cMe(u), got: [o.give] };
     }
     return { ok: false, error: "Unknown" };
+  }
+  // ---------- backups ----------
+  dumpTables() { const out = {}; for (const t of BACKUP_TABLES) { try { out[t] = [...this.sql.exec(`SELECT * FROM ${t}`)]; } catch (e) { } } return out; }
+  restoreTables(data, tables) {
+    const done = [];
+    this.ctx.storage.transactionSync(() => {
+      for (const t of tables) { if (!BACKUP_TABLES.includes(t) || !Array.isArray(data[t])) continue; this.sql.exec(`DELETE FROM ${t}`);
+        for (const r of data[t]) { const k = Object.keys(r); if (!k.length) continue; this.sql.exec(`INSERT OR REPLACE INTO ${t}(${k.join(",")}) VALUES(${k.map(() => "?").join(",")})`, ...k.map(x => r[x])); }
+        done.push(t + ":" + data[t].length); }
+    });
+    return done;
   }
   async webSocketClose(ws) { try { ws.close(); } catch (e) { } }
   // ---------- push alerts (no payload: the phone fetches /api/alert) ----------
@@ -270,7 +291,46 @@ async function cardsApi(op, request, env, room) {
   if (["offer", "accept"].includes(op)) { const g = cat.byId[b.give], wa = cat.byId[b.want]; if (op === "offer" && (!g || !wa)) return J({ ok: false, error: "Unknown card." }); }
   if (op === "google") { const g = await verifyGoogle(b.cred, env); if (!g) return J({ ok: false, error: "Google sign-in failed." }); b.g = g; }
   if (op === "shop") return J({ ok: false, error: "Card packs aren't for sale yet." });
+  if (op === "top") { b.season = cat.cards.filter(c => c[1] === se[0]).map(c => c[0]); const ck = new Request("https://cache.local/cards-top-" + se[0]), cache = caches.default, hit = await cache.match(ck); if (hit) return hit;
+    const r = J(await room.cardsOp("top", b, ipH)); r.headers.set("cache-control", "public, max-age=60"); try { await cache.put(ck, r.clone()); } catch (e) { } return r; }
   return J(await room.cardsOp(op, b, ipH));
+}
+// ---------- nightly backups to KV (gzip, split into 20 MB parts, 30 days kept) ----------
+const BACKUP_TABLES = ["wdoc", "msg", "ban", "idea", "vote", "report", "sub", "fol", "ckey", "cuser", "card", "cinst", "cmint", "offer"];
+async function gz(str) { const s = new Blob([str]).stream().pipeThrough(new CompressionStream("gzip")); return new Uint8Array(await new Response(s).arrayBuffer()); }
+async function gunz(buf) { const s = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip")); return await new Response(s).text(); }
+async function runBackup(env, room, force) {
+  if (!env.BACKUPS) return { ok: false, error: "no BACKUPS binding" };
+  const day = new Date().toISOString().slice(0, 10);
+  if (!force && (await env.BACKUPS.get("last")) === day) return { ok: true, skipped: day };
+  const data = await room.dumpTables(); const counts = {}; for (const k in data) counts[k] = data[k].length;
+  const z = await gz(JSON.stringify({ v: 1, day, ts: Date.now(), data })), PART = 20 * 1024 * 1024, parts = Math.ceil(z.length / PART) || 1;
+  for (let i = 0; i < parts; i++) await env.BACKUPS.put(`b:${day}:${i}`, z.slice(i * PART, (i + 1) * PART));
+  const idx = JSON.parse((await env.BACKUPS.get("index")) || "[]").filter(e => e.day !== day); idx.push({ day, parts, bytes: z.length, counts });
+  idx.sort((a, b) => a.day < b.day ? -1 : 1);
+  while (idx.length > 30) { const old = idx.shift(); for (let i = 0; i < old.parts; i++) await env.BACKUPS.delete(`b:${old.day}:${i}`); }
+  await env.BACKUPS.put("index", JSON.stringify(idx)); await env.BACKUPS.put("last", day);
+  return { ok: true, day, parts, bytes: z.length, counts };
+}
+async function loadBackup(env, day) {
+  const idx = JSON.parse((await env.BACKUPS.get("index")) || "[]"), e = idx.find(x => x.day === day); if (!e) return null;
+  const bufs = []; for (let i = 0; i < e.parts; i++) bufs.push(new Uint8Array(await env.BACKUPS.get(`b:${day}:${i}`, "arrayBuffer")));
+  const all = new Uint8Array(bufs.reduce((a, b) => a + b.length, 0)); let o = 0; for (const b of bufs) { all.set(b, o); o += b.length; }
+  return JSON.parse(await gunz(all));
+}
+async function adminApi(op, request, env, room) {
+  const b = request.method === "POST" ? await request.json().catch(() => ({})) : {}, key = b.key || new URL(request.url).searchParams.get("key");
+  if (!env.ADMIN_KEY || key !== env.ADMIN_KEY) return J({ ok: false }, 403);
+  if (op === "backups") return J({ ok: true, index: JSON.parse((await env.BACKUPS.get("index")) || "[]") });
+  if (op === "backup") return J(await runBackup(env, room, true));
+  if (op === "restore") {
+    if (b.confirm !== "RESTORE " + b.day) return J({ ok: false, error: 'Send confirm: "RESTORE <day>" to restore that backup over the live data.' }, 400);
+    const bk = await loadBackup(env, b.day); if (!bk) return J({ ok: false, error: "No backup for that day" }, 404);
+    await runBackup(env, room, true); // save the current state first, so a restore can be undone
+    const tables = Array.isArray(b.tables) && b.tables.length ? b.tables : BACKUP_TABLES;
+    return J({ ok: true, restored: await room.restoreTables(bk.data, tables) });
+  }
+  return J({ ok: false }, 404);
 }
 async function hash(s) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(d)].slice(0, 12).map(b => b.toString(16).padStart(2, "0")).join(""); }
 const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -340,7 +400,8 @@ export default {
     if (url.pathname === "/api/wlease" && request.method === "POST") return room.fetch(new Request(url.origin + "/wlease", { method: "POST", body: await request.text() }));
     if (url.pathname === "/api/wdoc") { if (request.method === "PUT") return room.fetch(new Request(url.origin + "/wset" + url.search, { method: "POST", body: await request.text() })); return room.fetch(new Request(url.origin + "/wget" + url.search)); }
     if (url.pathname === "/api/stats") return room.fetch(new Request(url.origin + "/stats"));
-    if (url.pathname.startsWith("/api/cards/")) { const op = url.pathname.slice(11); if (!/^(catalog|me|name|daily|spot|witness|offers|offer|cancel|accept|google|signout|shop)$/.test(op)) return J({ ok: false }, 404); return cardsApi(op, request, env, room); }
+    if (url.pathname.startsWith("/api/admin/")) return adminApi(url.pathname.slice(11), request, env, room);
+    if (url.pathname.startsWith("/api/cards/")) { const op = url.pathname.slice(11); if (!/^(catalog|me|name|daily|spot|witness|offers|offer|cancel|accept|google|signout|shop|top)$/.test(op)) return J({ ok: false }, 404); return cardsApi(op, request, env, room); }
     if (url.pathname === "/api/wx") return realWeather(url, ctx);
     if (url.pathname === "/api/ideas") return room.fetch(new Request(url.origin + "/ideas"));
     if (url.pathname === "/api/push/sub" && request.method === "POST") return room.fetch(new Request(url.origin + "/sub", { method: "POST", body: await request.text() }));
@@ -352,6 +413,6 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runImports(env)); if (event.cron === "* * * * *") return;
     const room = env.ROOM.get(env.ROOM.idFromName("world"));
-    ctx.waitUntil((async () => { const ev = await (await env.ASSETS.fetch(new Request("https://assets.local/events.json"))).json(); await room.alerts(ev); await room.followAlerts(); })());
+    ctx.waitUntil((async () => { if (new Date().getUTCHours() === 11) { try { await runBackup(env, room, false); } catch (e) { console.error('backup', e); } } const ev = await (await env.ASSETS.fetch(new Request("https://assets.local/events.json"))).json(); await room.alerts(ev); await room.followAlerts(); })());
   },
 };

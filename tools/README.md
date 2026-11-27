@@ -35,3 +35,7 @@ All of these need `python3 build.py` first (they load `tools/test.html`) and run
 - `public/cities.json` rows are `[name, lat, lon, population, country, foundedYear?, 1 if that year is the earliest written record?]`. Founding years come from Wikidata (inception P571 and earliest written record P1249, CC0), matched to each city by name within 0.3 degrees, earliest date kept.
 - Old World dates from 1800 on in East/South Asia, Turkey, Iran and Europe are left out (they are usually municipal mergers or new city status, not foundings), as are Brazil's post-1900 municipal splits (except planned cities) and Mexico City's 1928 boroughs. A city without a year keeps the regional gate in `cityGate`.
 - A city is hidden before its founding year; cities of 500k+ get a "founded" / "first written record" event (`FD`, `fireFounding`).
+
+## Backups and admin
+- Every night (11:00 UTC, about 3 AM Pacific) the worker saves the world, chat, ideas, alerts and all cards to the BACKUPS KV namespace (gzip, last 30 days). POST /api/admin/backups {key} lists them; POST /api/admin/backup {key} makes one now; POST /api/admin/restore {key, day, confirm:"RESTORE <day>", tables:[...]} restores (it saves the current state first). The key is the ADMIN_KEY secret; never put it in the repo.
+- Never change table layouts in a way that breaks restoring older backups.

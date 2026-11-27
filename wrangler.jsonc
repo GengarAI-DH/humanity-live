@@ -7,7 +7,7 @@
   "vars": { "WORLD_START": "1795764601441", "VAPID_PUBLIC": "BKTFE-pUAnc-Zxu7uc3n7eozNnWUs0K9CFe6iZ655p9nxIsEm8eUdBEchhFCdDogbCnp3htZsJ97qQTMECzXcuc" },
   "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
-  "kv_namespaces": [{ "binding": "IMPORTS", "id": "99372d5ba3dd444abe48d05cbdc25666" }],
+  "kv_namespaces": [{ "binding": "IMPORTS", "id": "99372d5ba3dd444abe48d05cbdc25666" }, { "binding": "BACKUPS", "id": "7d38279db4034fa28b0357e858740099" }],
   "triggers": { "crons": ["*/10 * * * *", "* * * * *"] },
   "observability": { "enabled": true }
 }
