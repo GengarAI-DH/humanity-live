@@ -1,7 +1,26 @@
 [
- {"when":"Nov 27","text":"Historic journeys you can watch on their real routes: Columbus, the Mayflower, Lewis and Clark, Magellan, Marco Polo, Darwin, Lindbergh and more"},
- {"when":"Nov 27","text":"Real elevation and sea depth for the whole planet, real rivers and lakes, 16 biome types, giant trees like redwoods and baobabs"},
- {"when":"Nov 27","text":"Famous landmarks get built in their real years, from Stonehenge to Mount Rushmore and the Burj Khalifa; the Grand Canyon carves itself"},
- {"when":"Nov 27","text":"Follow a species and get an alert when it goes extinct; cloud on/off button; tap anywhere for a card about that spot"},
- {"when":"Nov 27","text":"Ideas board with voting, live chat, viewer count, phone alerts, badges, clips, music and streamer mode"}
+ {
+  "when": "Nov 27",
+  "text": "World wonders rise on the map in their real years and stay: the pyramids (gleaming white at first), the Great Wall, the Colosseum, Angkor Wat, the Taj Mahal, the Eiffel Tower, Mount Rushmore, the Twin Towers and more"
+ },
+ {
+  "when": "Nov 27",
+  "text": "Historic journeys you can watch on their real routes: Columbus, the Mayflower, Lewis and Clark, Magellan, Marco Polo, Darwin, Lindbergh and more"
+ },
+ {
+  "when": "Nov 27",
+  "text": "Real elevation and sea depth for the whole planet, real rivers and lakes, 16 biome types, giant trees like redwoods and baobabs"
+ },
+ {
+  "when": "Nov 27",
+  "text": "Famous landmarks get built in their real years, from Stonehenge to Mount Rushmore and the Burj Khalifa; the Grand Canyon carves itself"
+ },
+ {
+  "when": "Nov 27",
+  "text": "Follow a species and get an alert when it goes extinct; cloud on/off button; tap anywhere for a card about that spot"
+ },
+ {
+  "when": "Nov 27",
+  "text": "Ideas board with voting, live chat, viewer count, phone alerts, badges, clips, music and streamer mode"
+ }
 ]
