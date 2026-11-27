@@ -7,3 +7,6 @@ tools/borders.json
 tools/cities.json
 tools/water.json
 tools/changelog.json
+tools/quakes.json
+tools/package.json
+tools/package-lock.json
