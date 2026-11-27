@@ -37,6 +37,8 @@ export class Room extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS ban(uid TEXT PRIMARY KEY, ts INTEGER)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS sub(ep TEXT PRIMARY KEY, json TEXT, ts INTEGER)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS sent(k TEXT PRIMARY KEY)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS idea(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, name TEXT, uid TEXT, text TEXT, k TEXT, votes INTEGER DEFAULT 0, status TEXT DEFAULT '')");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS vote(iid INTEGER, uid TEXT, PRIMARY KEY(iid, uid))");
     });
   }
   async fetch(req) {
@@ -53,6 +55,7 @@ export class Room extends DurableObject {
     s.send(JSON.stringify({ t: "stats", ...this.stats() }));
     return new Response(null, { status: 101, webSocket: c });
   }
+  ideas() { return [...this.sql.exec("SELECT id,ts,name,text,votes,status FROM idea ORDER BY CASE status WHEN 'done' THEN 2 ELSE 0 END, votes DESC, ts DESC LIMIT 80")]; }
   stats() { const socks = this.ctx.getWebSockets(), heat = {}; for (const w of socks) { const a = w.deserializeAttachment(); if (a && a.lat != null) { const k = Math.round(a.lat / 5) * 5 + "," + Math.round(a.lon / 5) * 5; heat[k] = (heat[k] || 0) + 1; } } return { watching: socks.length, heat }; }
   broadcast(o) { const s = JSON.stringify(o); for (const w of this.ctx.getWebSockets()) { try { w.send(s); } catch (e) { } } }
   async webSocketMessage(ws, raw) {
@@ -60,7 +63,23 @@ export class Room extends DurableObject {
     const a = ws.deserializeAttachment() || {}; const now = Date.now();
     if (m.t === "pos") { if (typeof m.lat === "number" && typeof m.lon === "number") { a.lat = Math.max(-90, Math.min(90, m.lat)); a.lon = ((m.lon + 540) % 360) - 180; ws.serializeAttachment(a); } return; }
     if (m.t === "stats") { ws.send(JSON.stringify({ t: "stats", ...this.stats() })); return; }
+    if (m.t === "ideas") { ws.send(JSON.stringify({ t: "ideas", list: this.ideas(), mine: [...this.sql.exec("SELECT iid FROM vote WHERE uid=?", a.uid)].map(r => r.iid) })); return; }
+    if (m.t === "vote") { const id = Number(m.id); if (![...this.sql.exec("SELECT 1 FROM idea WHERE id=?", id)].length) return; const had = [...this.sql.exec("SELECT 1 FROM vote WHERE iid=? AND uid=?", id, a.uid)].length; if (had) { this.sql.exec("DELETE FROM vote WHERE iid=? AND uid=?", id, a.uid); this.sql.exec("UPDATE idea SET votes=votes-1 WHERE id=?", id); } else { this.sql.exec("INSERT INTO vote VALUES(?,?)", id, a.uid); this.sql.exec("UPDATE idea SET votes=votes+1 WHERE id=?", id); } this.broadcast({ t: "ideas_dirty" }); return; }
+    if (m.t === "idea") {
+      const ierr = (e) => ws.send(JSON.stringify({ t: "ierr", e }));
+      if ([...this.sql.exec("SELECT 1 FROM ban WHERE uid=?", a.uid)].length) return ierr("You can't post here.");
+      const name = String(m.name || "").trim(), text = String(m.text || "").trim().replace(/\s+/g, " ");
+      let e = checkText(name, "name"); if (e) return ierr(e); e = checkText(text, "msg"); if (e) return ierr(e);
+      if (text.length < 8) return ierr("Tell us a bit more (at least 8 characters).");
+      if ([...this.sql.exec("SELECT COUNT(*) AS n FROM idea WHERE uid=? AND ts>?", a.uid, now - 864e5)][0].n >= 3) return ierr("You can post 3 ideas a day. Vote for others in the meantime!");
+      const k = fold(text).replace(/[^a-z0-9]/g, ""); if ([...this.sql.exec("SELECT 1 FROM idea WHERE k=?", k)].length) return ierr("Someone already suggested that. Vote for it instead!");
+      this.sql.exec("INSERT INTO idea(ts,name,uid,text,k,votes) VALUES(?,?,?,?,?,1)", now, name, a.uid, text, k);
+      const id = [...this.sql.exec("SELECT last_insert_rowid() AS id")][0].id; this.sql.exec("INSERT INTO vote VALUES(?,?)", id, a.uid);
+      this.broadcast({ t: "ideas_dirty" }); ws.send(JSON.stringify({ t: "iok" })); return;
+    }
     if (m.t === "admin" && this.env.ADMIN_KEY && m.key === this.env.ADMIN_KEY) {
+      if (m.ideaDel) { this.sql.exec("DELETE FROM idea WHERE id=?", m.ideaDel); this.sql.exec("DELETE FROM vote WHERE iid=?", m.ideaDel); this.broadcast({ t: "ideas_dirty" }); }
+      if (m.ideaStatus) { this.sql.exec("UPDATE idea SET status=? WHERE id=?", String(m.ideaStatus.status || "").slice(0, 20), m.ideaStatus.id); this.broadcast({ t: "ideas_dirty" }); }
       if (m.del) { this.sql.exec("DELETE FROM msg WHERE id=?", m.del); this.broadcast({ t: "del", id: m.del }); }
       if (m.banName) { const r = [...this.sql.exec("SELECT uid FROM msg WHERE name=? ORDER BY id DESC LIMIT 1", m.banName)][0]; if (r) { this.sql.exec("INSERT OR REPLACE INTO ban VALUES(?,?)", r.uid, now); this.sql.exec("DELETE FROM msg WHERE uid=?", r.uid); this.broadcast({ t: "purge", name: m.banName }); } }
       return;
