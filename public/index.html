@@ -1201,6 +1201,12 @@ let DUNG=[],dungM=null;
 function dropDung(z,a,T){if(cam.alt>3||DUNG.length>=60)return;const L=lenOf(a.type)||1.5,o=z.o,e=z.e,u=z.u,so=z.so,y=a.y||0;DUNG.push({p:[o[0]+e[0]*a.x+so[0]*a.zz+u[0]*y,o[1]+e[1]*a.x+so[1]*a.zz+u[1]*y,o[2]+e[2]*a.x+so[2]*a.zz+u[2]*y],u:[u[0],u[1],u[2]],f:[e[0],e[1],e[2]],s:Math.min(2.2,.35+L*.12),t:T})}
 function updDung(T){if(!dungM){dungM=new THREE.InstancedMesh(new THREE.SphereGeometry(.004,6,4,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:0x4a3524}),60);dungM.frustumCulled=false;dungM.count=0;scene.add(dungM)}
  DUNG=DUNG.filter(d=>T-d.t<240);let n=0;for(const d of DUNG){const k=1-Math.max(0,(T-d.t-180)/60);setInst(dungM.instanceMatrix.array,n*16,d.p[0],d.p[1],d.p[2],d.u[0],d.u[1],d.u[2],d.f[0],d.f[1],d.f[2],d.s*k,.6);n++}dungM.count=n;dungM.instanceMatrix.needsUpdate=true}
+// species interactions from public/interactions.json (researched rules; see that file)
+let IXR=null;(async()=>{try{const j=await (await fetch('interactions.json')).json();const m={};for(const r of j.rules||[]){const [a,tg,k,w,n]=r;(m[a]=m[a]||[]).push({t:tg,k,w:+w||.5,n:n||''})}IXR=m}catch(e){IXR={}}})();
+const ixm=(b,t)=>!!b.sp&&(t==='*'||b.type===t||(t==='*pred'&&b.sp.pred)||(t==='*herb'&&!b.sp.pred&&b.sp.hab==='l')||(t.startsWith('m:')&&b.sp.m===t.slice(2)));
+function ixRules(a){if(!IXR)return null;const L=[];for(const key of [a.type,'m:'+a.sp.m,a.sp.pred?'*pred':'*herb','*'])if(IXR[key])L.push(...IXR[key]);return L.length?L:null}
+function ixW(a,b){let w=1;const L=ixRules(a);if(L)for(const r of L)if(r.k==='hunts'&&ixm(b,r.t))w+=r.w*6;return w}
+function wpick(a,list){let s=0;const ws=list.map(b=>{const w=ixW(a,b);s+=w;return w});let r=rnd()*s;for(let i=0;i<list.length;i++){r-=ws[i];if(r<=0)return list[i]}return list[list.length-1]}
 const DEFEND=b=>['cera','ankylo','stego'].includes(b.sp.m)||(b.sp.m==='sauro'&&(lenOf(b.type)||0)>14);
 function updWild(dt,T){updDung(T);const cu=cam.t,near=cam.alt<25,cnt={};SWN=0;const CP=camera.position,WL2=(QG.lvl===2||LITE?24:34)**2;
  for(const z of WZ){z.d2=z.o?((z.o[0]-CP.x)**2+(z.o[1]-CP.y)**2+(z.o[2]-CP.z)**2)/WL2:9e9;z.cx+=z.dx*dt*.0015;z.cz+=z.dz*dt*.0015;if(Math.hypot(z.cx,z.cz)>1.2){z.dx=-z.cx;z.dz=-z.cz}if(rnd()<dt*.02){z.dx=rnd()-.5;z.dz=rnd()-.5}}
@@ -1219,10 +1225,21 @@ function updWild(dt,T){updDung(T);const cu=cam.t,near=cam.alt<25,cnt={};SWN=0;co
    px=o[0]+e[0]*x+so[0]*zz+u[0]*hh;py=o[1]+e[1]*x+so[1]*zz+u[1]*hh;pz=o[2]+e[2]*x+so[2]*zz+u[2]*hh;const qx=-Math.sin(ph),qz=Math.cos(ph);fx=e[0]*qx+so[0]*qz;fy=e[1]*qx+so[1]*qz;fz=e[2]*qx+so[2]*qz;sy=1}
   else{if(z.water)continue;
    a.sleep=!a.dead&&night(z)&&!sp.hom&&!a.run&&!a.flee&&!(a.eat>T)&&!(sp.pred&&hash(a.idx,z.i)<.3);
+   if(IXR&&near&&z.U.angleTo(cu)<.06&&!a.sleep&&!a.dead&&!a.run&&!(a.eat>T)&&!(a.fight>T)&&!(a.ixT>T)&&rnd()<dt*.15){const RL=ixRules(a);if(RL)for(const r of RL){if(r.k==='hunts'||rnd()>r.w)continue;
+     if(r.k==='scavenges'){const c=WA.find(b=>b.zo===z&&b.dead&&T-(b.deadAt||-1e9)<40&&ixm(b,r.t)&&Math.hypot(b.x-a.x,b.zz-a.zz)<.4);if(c){a.tx=c.x+(rnd()-.5)*.01;a.tz=c.zz+(rnd()-.5)*.01;a.w=0;a.stealT=T+15;a.ixAct=r.n||'scavenging';a.ixT=T+25;break}}
+     else if(r.k==='follows'){const c=WA.find(b=>b.zo===z&&!b.dead&&b!==a&&ixm(b,r.t));if(c){a.tx=c.x+(rnd()-.5)*.04;a.tz=c.zz+(rnd()-.5)*.04;a.w=0;a.ixAct=r.n||'following';a.ixT=T+12;break}}
+     else if(r.k==='avoids'){const c=WA.find(b=>b.zo===z&&!b.dead&&b!==a&&ixm(b,r.t)&&Math.hypot(b.x-a.x,b.zz-a.zz)<.12);if(c){const an=Math.atan2(a.x-c.x,a.zz-c.zz);a.tx=a.x+Math.sin(an)*.15;a.tz=a.zz+Math.cos(an)*.15;a.w=0;a.ixAct=r.n||'keeping away';a.ixT=T+6;break}}
+     else if(r.k==='rivals'){const c=WA.find(b=>b.zo===z&&b!==a&&!b.dead&&!b.sleep&&ixm(b,r.t)&&Math.hypot(b.x-a.x,b.zz-a.zz)<.08&&!(b.fight>T)&&!(b.hurt>T));if(c){a.fight=c.fight=T+5;a.w=c.w=5;a.h=Math.atan2(c.x-a.x,c.zz-a.zz);c.h=a.h+Math.PI;const lo=rnd()<.5?a:c;lo.hurt=T+15;a.ixAct=c.ixAct=r.n||'fighting';a.ixT=c.ixT=T+5;break}}}}
+   if(near&&z.U.angleTo(cu)<.06&&!a.sleep&&!a.dead&&sp.pred&&!a.run&&!(a.hurt>T)&&!(a.fight>T)&&!(a.eat>T)&&rnd()<dt*.12){
+    const L=lenOf(a.type)||2,nb=WA.filter(b=>b!==a&&b.zo===z&&b.sp&&b.sp.pred&&!b.dead&&!b.sleep&&Math.hypot(b.x-a.x,b.zz-a.zz)<.25),show=z.U.angleTo(cam.t)<.03&&cam.alt<3;
+    const vic=nb.find(b=>b.eat>T&&(lenOf(b.type)||2)<L*.9);
+    if(vic){vic.eat=0;vic.hurt=T+10;const an=Math.atan2(vic.x-a.x,vic.zz-a.zz);vic.tx=vic.x+Math.sin(an)*.2;vic.tz=vic.zz+Math.cos(an)*.2;vic.w=0;a.tx=vic.x;a.tz=vic.zz;a.w=0;a.stealT=T+12;if(show)toast(`<b>${esc(sp.n)}</b> chases ${art(vic.sp.n)} ${esc(vic.sp.n.toLowerCase())} off its kill`,3000)}
+    else{const riv=nb.find(b=>b.type===a.type&&Math.hypot(b.x-a.x,b.zz-a.zz)<.08&&!(b.fight>T)&&!(b.hurt>T));
+     if(riv&&rnd()<.5){a.fight=riv.fight=T+5;a.w=riv.w=5;a.h=Math.atan2(riv.x-a.x,riv.zz-a.zz);riv.h=a.h+Math.PI;const lo=rnd()<.5?a:riv,wi=lo===a?riv:a;lo.hurt=T+18;const an=Math.atan2(lo.x-wi.x,lo.zz-wi.zz);lo.tx=lo.x+Math.sin(an)*.3;lo.tz=lo.zz+Math.cos(an)*.3;if(show)toast(`Two <b>${esc(sp.n)}</b> fight over territory: face bites, then one backs off`,3500)}}}
    if(near&&z.U.angleTo(cu)<.06&&!a.sleep&&!a.dead){
     if(a.w>0)a.w-=dt;else{const dx=a.tx-a.x,dz=a.tz-a.zz,d=Math.hypot(dx,dz);
-     if(d<.003){if(!sp.hom&&rnd()<.06)dropDung(z,a,T);if(sp.hom){const r=night(z)?.03+rnd()*.03:.05+rnd()*.25,an=rnd()*6.28;a.tx=Math.cos(an)*r;a.tz=Math.sin(an)*r;a.w=night(z)?20+rnd()*20:3+rnd()*8}
-      else if(sp.pred&&rnd()<.45&&!(a.fed>T)){const L=lenOf(a.type)||2,mx=L*(PACK.has(a.type)?3:1.3),prey=WA.filter(b=>b.zo===a.zo&&!b.dead&&b!==a&&!b.sp.pred&&b.sp.hab==='l'&&!b.sp.hom&&(lenOf(b.type)||1)<=mx&&(lenOf(b.type)||1)>=L*.12);if(prey.length){a.prey=pick(prey);a.tx=a.prey.x;a.tz=a.prey.zz;a.w=0;a.run=1}}
+     if(d<.003){if(!sp.hom&&rnd()<.06)dropDung(z,a,T);if(a.stealT>T){a.stealT=0;a.eat=T+20;a.w=20;a.fed=T+120}else if(sp.hom){const r=night(z)?.03+rnd()*.03:.05+rnd()*.25,an=rnd()*6.28;a.tx=Math.cos(an)*r;a.tz=Math.sin(an)*r;a.w=night(z)?20+rnd()*20:3+rnd()*8}
+      else if(sp.pred&&rnd()<.45&&!(a.fed>T)){const L=lenOf(a.type)||2,mx=L*(PACK.has(a.type)?3:1.3),prey=WA.filter(b=>b.zo===a.zo&&!b.dead&&b!==a&&(!b.sp.pred||(lenOf(b.type)||1)<L*.35)&&b.sp.hab==='l'&&!b.sp.hom&&(lenOf(b.type)||1)<=mx&&(lenOf(b.type)||1)>=L*.12);if(prey.length){a.prey=wpick(a,prey);a.tx=a.prey.x;a.tz=a.prey.zz;a.w=0;a.run=1}}
       else{a.run=0;const hk=hash(z.i*13+a.type.length,a.type.charCodeAt(0))*6.283;
        if(sp.pred){const r=.55+hash(z.i,a.idx+3)*.4,an=hk+a.idx*1.7;a.tx=z.cx+Math.cos(an)*r+(rnd()-.5)*.25;a.tz=z.cz+Math.sin(an)*r+(rnd()-.5)*.25;a.w=4+rnd()*10}
        else{const hx=z.cx+Math.cos(hk)*.18,hz=z.cz+Math.sin(hk)*.18,sp2=(lenOf(a.type)||2)>8?.06:.04;a.tx=hx+(rnd()-.5)*sp2*2;a.tz=hz+(rnd()-.5)*sp2*2;a.w=3+rnd()*9}}
@@ -1235,7 +1252,7 @@ function updWild(dt,T){updDung(T);const cu=cam.t,near=cam.alt<25,cnt={};SWN=0;co
    const sh=Math.sin(a.h),ch=Math.cos(a.h);px=o[0]+e[0]*a.x+so[0]*a.zz+u[0]*a.y;py=o[1]+e[1]*a.x+so[1]*a.zz+u[1]*a.y;pz=o[2]+e[2]*a.x+so[2]*a.zz+u[2]*a.y;fx=e[0]*sh+so[0]*ch;fy=e[1]*sh+so[1]*ch;fz=e[2]*sh+so[2]*ch}
   a.wx=px;a.wy=py;a.wz=pz;
   if(sp.m==='hum'){if(HUMN>=homB.instanceMatrix.count)continue;setInst(homB.instanceMatrix.array,HUMN*16,px,py,pz,u[0],u[1],u[2],fx,fy,fz,sc);_c.setHex(sp.c);homB.instanceColor.setXYZ(HUMN,_c.r,_c.g,_c.b);_c.setHex(a.type==='robot'?0xb8c0c8:0x4a3426);homH.instanceColor.setXYZ(HUMN,_c.r,_c.g,_c.b);for(let k=0;k<16;k++)homH.instanceMatrix.array[HUMN*16+k]=homB.instanceMatrix.array[HUMN*16+k];HUMN++;continue}
-  const i=cnt[sp.m]=(cnt[sp.m]||0);if(i>=M.instanceMatrix.count)continue;cnt[sp.m]++;let ux=u[0],uy=u[1],uz=u[2];a.act=a.dead?'dead':a.sleep?'asleep':a.fight>T?'fighting back':a.hurt>T?'retreating, wounded':a.eat>T?'eating its kill':a.run?'hunting':a.guard>T?'standing its ground':a.flee?'running away':'';
+  const i=cnt[sp.m]=(cnt[sp.m]||0);if(i>=M.instanceMatrix.count)continue;cnt[sp.m]++;let ux=u[0],uy=u[1],uz=u[2];a.act=a.dead?'dead':a.sleep?'asleep':a.fight>T?(sp.pred?'fighting a rival':'fighting back'):a.hurt>T?(a.eat>T?'eating':'backing off, wounded'):a.ixT>T&&a.ixAct?a.ixAct:a.eat>T?'eating its kill':a.run?'hunting':a.guard>T?'standing its ground':a.flee?'running away':'';
   if(sp.hab==='l'){if(a.dead){const fd=Math.min(1,(T-a.deadAt)/1.2)*1.5708,sx_=fy*uz-fz*uy,sy_=fz*ux-fx*uz,sz_=fx*uy-fy*ux,c=Math.cos(fd),s=Math.sin(fd);ux=u[0]*c+sx_*s;uy=u[1]*c+sy_*s;uz=u[2]*c+sz_*s;const k2=Math.max(0,(T-a.deadAt-35)/10);sy*=1-k2*.8}
    else if(a.sleep)sy*=.55;
    else if(a.fight>T){const p=.22*Math.sin(T*9),c=Math.cos(p),s=Math.sin(p),nfx=fx*c-u[0]*s,nfy=fy*c-u[1]*s,nfz=fz*c-u[2]*s;ux=u[0]*c+fx*s;uy=u[1]*c+fy*s;uz=u[2]*c+fz*s;fx=nfx;fy=nfy;fz=nfz}
