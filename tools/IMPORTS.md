@@ -14,4 +14,5 @@ Good sources:
 - Recent earthquakes: https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minmagnitude=7&starttime=1900-01-01
 - Fossils: https://paleobiodb.org/data1.2/occs/list.json?base_name=Dinosauria&interval=Maastrichtian&show=coords,paleoloc,class
 - Wikidata (battles, cities founded, people, structures with dates and coordinates): https://query.wikidata.org/sparql?format=json&query=...
+The IUCN Red List API (api.iucnredlist.org/api/v4/...) works once the IUCN_TOKEN secret is set on the worker; the server adds it automatically.
 Always credit the source in the commit message and, for large imports, in the app's card text.

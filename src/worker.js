@@ -176,6 +176,7 @@ async function runImports(env) {
       const u = new URL(job.url); if (u.protocol !== "https:" || !IMPORT_HOSTS.includes(u.hostname)) { meta.status = 403; meta.error = "host not on the approved list"; }
       else {
         const headers = { "user-agent": "HumanityLive/1.0 (educational Earth history simulation; buildswithdevin@gmail.com)", accept: job.accept || "*/*" };
+        if (u.hostname === "api.iucnredlist.org" && env.IUCN_TOKEN) headers.authorization = "Bearer " + env.IUCN_TOKEN;
         if (job.method === "POST") headers["content-type"] = job.contentType || "application/x-www-form-urlencoded";
         const r = await fetch(u.toString(), { method: job.method === "POST" ? "POST" : "GET", headers, body: job.method === "POST" ? job.body || "" : undefined, redirect: "follow" });
         meta.status = r.status; meta.type = r.headers.get("content-type") || ""; const buf = new Uint8Array(await r.arrayBuffer());
@@ -201,7 +202,7 @@ export default {
     return env.ASSETS.fetch(request);
   },
   async scheduled(event, env, ctx) {
-    if (event.cron === "* * * * *") { ctx.waitUntil(runImports(env)); return; }
+    ctx.waitUntil(runImports(env)); if (event.cron === "* * * * *") return;
     const room = env.ROOM.get(env.ROOM.idFromName("world"));
     ctx.waitUntil((async () => { const ev = await (await env.ASSETS.fetch(new Request("https://assets.local/events.json"))).json(); await room.alerts(ev); await room.followAlerts(); })());
   },
