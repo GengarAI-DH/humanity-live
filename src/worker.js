@@ -140,12 +140,35 @@ async function sendPush(endpoint, env) {
   return r.status;
 }
 
+// ---------- recorded weather (ERA5 reanalysis via Open-Meteo, 1940 to now) ----------
+const WMO = { 0: "clear", 1: "mostly clear", 2: "partly cloudy", 3: "overcast", 45: "fog", 48: "freezing fog", 51: "light drizzle", 53: "drizzle", 55: "heavy drizzle", 56: "freezing drizzle", 57: "freezing drizzle", 61: "light rain", 63: "rain", 65: "heavy rain", 66: "freezing rain", 67: "freezing rain", 71: "light snow", 73: "snow", 75: "heavy snow", 77: "snow grains", 80: "rain showers", 81: "rain showers", 82: "violent rain showers", 85: "snow showers", 86: "heavy snow showers", 95: "thunderstorm", 96: "thunderstorm with hail", 99: "thunderstorm with heavy hail" };
+async function realWeather(url, ctx) {
+  const lat = Math.round(Number(url.searchParams.get("lat")) * 2) / 2, lon = Math.round(Number(url.searchParams.get("lon")) * 2) / 2, date = String(url.searchParams.get("date") || "");
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return J({ ok: false }, 400);
+  const key = new Request(`https://wx.cache/${lat}/${lon}/${date}`), cache = caches.default, hit = await cache.match(key); if (hit) return hit;
+  const today = new Date().toISOString().slice(0, 10), recent = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+  let src, live = false;
+  if (date < "1940-01-01") return J({ ok: false, reason: "before records" });
+  if (date <= recent) src = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${date}&end_date=${date}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,wind_speed_10m_max,weather_code&timezone=auto`;
+  else if (date <= today) { live = true; src = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,snowfall,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto`; }
+  else return J({ ok: false, reason: "future" });
+  try {
+    const r = await fetch(src); if (!r.ok) return J({ ok: false }, 502); const j = await r.json(); let o;
+    if (live) o = { ok: true, live: true, date, t: j.current.temperature_2m, hi: j.daily.temperature_2m_max[0], lo: j.daily.temperature_2m_min[0], rain: j.current.precipitation, snow: j.current.snowfall, wind: j.current.wind_speed_10m, code: j.current.weather_code };
+    else { const d = j.daily; o = { ok: true, date, hi: d.temperature_2m_max[0], lo: d.temperature_2m_min[0], rain: d.precipitation_sum[0], snow: d.snowfall_sum[0], wind: d.wind_speed_10m_max[0], code: d.weather_code[0] }; }
+    o.kind = WMO[o.code] || ""; o.src = "ERA5 reanalysis (ECMWF) via Open-Meteo";
+    const res = new Response(JSON.stringify(o), { headers: { "content-type": "application/json", "cache-control": live ? "max-age=900" : "max-age=2592000" } });
+    ctx.waitUntil(cache.put(key, res.clone())); return res;
+  } catch (e) { return J({ ok: false }, 502); }
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url), room = env.ROOM.get(env.ROOM.idFromName("world"));
     if (url.pathname === "/api/world") return J({ start: Number(env.WORLD_START), name: "Humanity, Live", vapid: env.VAPID_PUBLIC || null });
     if (url.pathname === "/api/live") return room.fetch(request);
     if (url.pathname === "/api/stats") return room.fetch(new Request(url.origin + "/stats"));
+    if (url.pathname === "/api/wx") return realWeather(url, ctx);
     if (url.pathname === "/api/ideas") return room.fetch(new Request(url.origin + "/ideas"));
     if (url.pathname === "/api/push/sub" && request.method === "POST") return room.fetch(new Request(url.origin + "/sub", { method: "POST", body: await request.text() }));
     if (url.pathname === "/api/push/unsub" && request.method === "POST") return room.fetch(new Request(url.origin + "/unsub", { method: "POST", body: await request.text() }));
