@@ -95,8 +95,8 @@ body.stream #dock,body.stream #rot,body.stream #pills,body.stream #place,body.st
 #chatLog .rp{color:var(--dim);font-size:11px;margin-left:8px;cursor:pointer}
 .tree{display:grid;gap:6px;margin-top:8px}.tree .gen{display:flex;flex-wrap:wrap;gap:6px}.tree .gen>*{background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px}.tree h4{margin:10px 0 2px;font:600 12px Archivo;color:var(--dim)}
 svg.ch{width:100%;height:120px;display:block;margin-top:6px}
-.tag.g{border-color:rgba(110,190,90,.6);font-size:10px}.tag{position:fixed;left:0;top:0;font:600 11px/1.15 Archivo,sans-serif;color:#fff;background:rgba(10,9,8,.62);border:1px solid rgba(255,255,255,.14);padding:2px 6px;border-radius:7px;white-space:nowrap;pointer-events:none;z-index:2;display:none;will-change:transform;text-align:center}
-.tag small{display:block;font-size:10px;color:#e8c9a8;font-weight:500}
+.tag.g{border-color:rgba(110,190,90,.6);font-size:10px}.tag{position:fixed;left:0;top:0;max-width:190px;overflow:hidden;text-overflow:ellipsis;font:600 11px/1.15 Archivo,sans-serif;color:#fff;background:rgba(10,9,8,.62);border:1px solid rgba(255,255,255,.14);padding:2px 6px;border-radius:7px;white-space:nowrap;pointer-events:none;z-index:2;display:none;will-change:transform;text-align:center}
+.tag small{display:block;overflow:hidden;text-overflow:ellipsis;font-size:10px;color:#e8c9a8;font-weight:500}
 .tag.p{border-color:rgba(255,138,61,.55)}.tag.a{border-color:rgba(140,200,120,.5)}.tag.l{border-color:rgba(255,215,120,.7);font-size:12px}
 #load,#intro{position:fixed;inset:0;display:grid;place-items:center;background:#04060a;z-index:9;text-align:center;padding:24px}
 #load{font:700 20px 'Archivo Narrow'}
@@ -1568,7 +1568,7 @@ const CC={};for(const c of COUNTRIES)CC[c[0]]={n:c[1],lat:c[2],lon:c[3],ct:c[4]}
 const INDEP={IN:1947,PK:1947,BD:1971,LK:1948,MM:1948,IL:1948,KP:1948,KR:1948,ID:1949,PH:1946,LA:1953,KH:1953,VN:1954,LY:1951,MA:1956,TN:1956,SD:1956,GH:1957,MY:1957,GN:1958,CM:1960,SN:1960,TG:1960,ML:1960,MG:1960,CD:1960,SO:1960,BJ:1960,NE:1960,BF:1960,CI:1960,TD:1960,CF:1960,CG:1960,GA:1960,NG:1960,MR:1960,CY:1960,SL:1961,TZ:1961,KW:1961,DZ:1962,UG:1962,RW:1962,BI:1962,JM:1962,TT:1962,WS:1962,KE:1963,MW:1964,ZM:1964,MT:1964,GM:1965,MV:1965,SG:1965,BW:1966,LS:1966,GY:1966,BB:1966,YE:1990,MU:1968,SZ:1968,GQ:1968,FJ:1970,TO:1970,BH:1971,QA:1971,AE:1971,BS:1973,GW:1974,GD:1974,MZ:1975,AO:1975,CV:1975,ST:1975,KM:1975,PG:1975,SR:1975,SC:1976,DJ:1977,SB:1978,DM:1978,LC:1979,KI:1979,VC:1979,ZW:1980,VU:1980,BZ:1981,AG:1981,KN:1983,BN:1984,FM:1986,MH:1986,NA:1990,EE:1991,LV:1991,LT:1991,UA:1991,BY:1991,MD:1991,GE:1991,AM:1991,AZ:1991,KZ:1991,UZ:1991,TM:1991,KG:1991,TJ:1991,SI:1991,HR:1991,MK:1991,BA:1992,CZ:1993,SK:1993,ER:1993,PW:1994,TL:2002,ME:2006,XK:2008,SS:2011};
 function countryName(cc,Y){if(cc==='RU'&&Y>=1922&&Y<1991)return 'Soviet Union';if(cc==='RS'&&Y<1992)return 'Yugoslavia';if(cc==='RS'&&Y<2006)return 'Serbia and Montenegro';if(cc==='CZ'&&Y<1993)return 'Czechoslovakia';if(cc==='DE'&&Y>=1949&&Y<1990)return 'West Germany';return CC[cc]?CC[cc].n:cc}
 function countryShown(cc,Y){if(Y<1945)return false;const sovietBloc=['EE','LV','LT','UA','BY','MD','GE','AM','AZ','KZ','UZ','TM','KG','TJ'];if(INDEP[cc]&&Y<INDEP[cc])return false;return true}
-let CITY=null,cityP=null,cityT=0,cityT0=-1e9;const CLBL=[],KLBL={};
+let CITY=null,cityP=null,cityT=0,cityT0=-1e9,cityCT=0,CLC=null;const CLBL=[],KLBL={};
 const GROW={AF:2.4,AS:1.08,EU:.92,NA:1.15,SA:1.05,OC:1.25,AN:1};
 function cityGate(cc,ct){if(ct==='OC')return cc==='AU'?1788:cc==='NZ'?1840:cc==='PG'?1880:1850;if(ct==='SA')return 1540;if(ct==='NA'){if(['MX','GT','BZ','HN','SV','NI','CR','PA'].includes(cc))return 1521;if(['CU','DO','HT','JM','PR','TT','BS','BB'].includes(cc))return 1500;return 1600}return -3500}
 let _cpY=NaN,_cpR=1;function cityPop(i,Y){const c=CITY,g=c.gate[i];if(Y<g)return 0;let p;if(Y<=2026.9){if(Y!==_cpY){_cpY=Y;_cpR=Math.pow(worldPop(Y)/8.2e9,1.6)}p=c.pop[i]*_cpR}else p=c.pop[i]*(1+((GROW[c.ct[i]]||1)-1)*clamp((Y-2026.9)/73.1,0,1));return p>=10000?p:0}
@@ -1591,8 +1591,9 @@ function updCities(force){if(!CITY)return;const col=cityP.geometry.attributes.co
  cityP.geometry.attributes.color.needsUpdate=true}
 const fmtP=p=>p>=1e6?(p/1e6).toFixed(p>=1e7?0:1)+'M':p>=1e3?Math.round(p/1e3)+'k':Math.round(p);
 function updCityLabels(){if(!CITY)return;const a=cam.alt,cp=camera.position,c=cam.t;let n=0;
- if(a<70&&simY>-3500){const th=clamp(a/R*1.3,.006,.6),cand=[];for(let i=0;i<CITY.n;i++){const ux=CITY.U[i*3],uy=CITY.U[i*3+1],uz=CITY.U[i*3+2],dot=ux*c.x+uy*c.y+uz*c.z;if(dot<Math.cos(th))continue;const p=cityPop(i,simY);if(p)cand.push([i,p])}
-  cand.sort((x,y)=>y[1]-x[1]);const placed=[];
+ if(a<70&&simY>-3500){const th=clamp(a/R*1.3,.006,.6),yk=Math.floor(simY*4);let cand;
+  if(CLC&&CLC.y===yk&&Math.abs(CLC.a-a)<a*.08&&CLC.x*c.x+CLC.yy*c.y+CLC.z*c.z>Math.cos(th*.15))cand=CLC.c;else{const ct=Math.cos(th),U=CITY.U;cand=[];for(let i=0;i<CITY.n;i++){if(U[i*3]*c.x+U[i*3+1]*c.y+U[i*3+2]*c.z<ct)continue;const p=cityPop(i,simY);if(p)cand.push([i,p])}
+  cand.sort((x,y)=>y[1]-x[1]);CLC={y:yk,a,x:c.x,yy:c.y,z:c.z,c:cand}}const placed=[];
   for(const[i,p]of cand){if(n>=CLBL.length)break;if(S.some(s=>s.built&&s.U&&s.tier>=0&&Math.abs(s.U.x-CITY.U[i*3])+Math.abs(s.U.y-CITY.U[i*3+1])+Math.abs(s.U.z-CITY.U[i*3+2])<.01))continue;
    const r=R+.05;_v.set(CITY.U[i*3]*r,CITY.U[i*3+1]*r,CITY.U[i*3+2]*r);if((_v.x-cp.x)*_v.x+(_v.y-cp.y)*_v.y+(_v.z-cp.z)*_v.z>0)continue;_v.project(camera);if(_v.z>1||Math.abs(_v.x)>1||Math.abs(_v.y)>1)continue;
    const x=(_v.x+1)/2*innerWidth,y=(1-_v.y)/2*innerHeight;if(placed.some(q=>Math.abs(q[0]-x)<80&&Math.abs(q[1]-y)<18))continue;placed.push([x,y]);
@@ -1647,8 +1648,8 @@ function updTags(){if(!tagsOn)return;const lim=1.9;if(cam.alt>lim){TAGS.forEach(
  for(const s of SHIPS)if(s.wx!==undefined)add(s.wx,s.wy,s.wz,simY<1850?'Sailing ship':simY<1950?'Steamship':'Cargo ship','','',.2,.08);
  C.sort((a,b)=>a[6]-b[6]);const placed=[];let n=0;
  for(const c of C){if(n>=TAGS.length)break;const up=_w.set(c[0],c[1],c[2]).normalize();_w.set(c[0]+up.x*c[7],c[1]+up.y*c[7],c[2]+up.z*c[7]);if((c[0]-cp.x)*up.x+(c[1]-cp.y)*up.y+(c[2]-cp.z)*up.z>0)continue;_w.project(camera);if(_w.z>1||Math.abs(_w.x)>1.05||Math.abs(_w.y)>1.05)continue;
-  const x=(_w.x+1)/2*innerWidth,y=(1-_w.y)/2*innerHeight;if(placed.some(p=>Math.abs(p[0]-x)<70&&Math.abs(p[1]-y)<26))continue;if((c[5]==='a'||c[5]==='g')&&placed.some(p=>p[2]===c[3]&&Math.hypot(p[0]-x,p[1]-y)<170))continue;if(c[5]==='g'&&placed.filter(p=>p[3]).length>=6)continue;if(placed.length>=26)break;placed.push([x,y,c[3],c[5]==='g']);
-  const d=TAGS[n++],h=esc(c[3])+(c[4]?`<small>${esc(c[4])}</small>`:'');if(d._h!==h){d.innerHTML=h;d._h=h}d.className='tag '+c[5];d.style.display='block';d.style.transform=`translate(${x|0}px,${y|0}px) translate(-50%,-100%)`}
+  const x=(_w.x+1)/2*innerWidth,y=(1-_w.y)/2*innerHeight;if(placed.some(p=>Math.abs(p[0]-x)<70&&Math.abs(p[1]-y)<26))continue;if((c[5]==='a'||c[5]==='g')&&placed.some(p=>p[2]===c[3]&&Math.hypot(p[0]-x,p[1]-y)<(c[5]==='g'?260:170)))continue;if(c[5]==='g'&&placed.filter(p=>p[3]).length>=6)continue;if(placed.length>=26)break;placed.push([x,y,c[3],c[5]==='g']);
+  const d=TAGS[n++],h=esc(c[3])+(c[4]?`<small>${esc(c[4])}</small>`:'');if(d._h!==h){d.innerHTML=h;d._h=h}d.className='tag '+c[5];d.style.display='block';const hw=Math.min(95,Math.max(c[3].length,(c[4]||'').length*.9)*3.1+7),tx=clamp(x,hw+4,innerWidth-hw-4);d.style.transform=`translate(${tx|0}px,${y|0}px) translate(-50%,-100%)`}
  for(;n<TAGS.length;n++)TAGS[n].style.display='none'}
 
 // ================== spectacle: particles, explosions, tsunamis, battles, scenes ==================
@@ -2587,7 +2588,7 @@ function frame(T){requestAnimationFrame(frame);const now=performance.now(),_t0=n
  camUpdate(dt);updDisasters(dt);updFX(dt);updSpectacle(dt);try{updLive(dt)}catch(e){}updWeather(dt);updSound(dt);updCaravans(dt);
  const sel=AM.get(selId);if(sel&&sel.vis&&sel.wx!==undefined){pin.visible=true;const s=Math.max(.008,cam.alt*.018);pin.scale.set(s*.6,s,s*.6);const u=new THREE.Vector3(sel.wx,sel.wy,sel.wz).normalize();pin.position.set(sel.wx,sel.wy,sel.wz).addScaledVector(u,.032+Math.abs(Math.sin(now/300))*.006);pin.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),u)}else pin.visible=false;
  hudT-=dt;if(hudT<=0){hudT=.25;updHud();updPlace()}
- if(QG.lvl===0||(QG.alt=!QG.alt)){updLabels();updGeo()}if(borderL){borderL.visible=simY>=1945&&cam.alt>3;borderL.material.opacity=clamp((cam.alt-3)/20,0,.35)}cityT-=dt;if(cityT<=0){cityT=.5;updCityLabels();if(Math.floor(simY)!==Math.floor(cityT0)||nightT<=.26){updCities();cityT0=simY}}tagT-=dt;if(tagT<=0){tagT=.12;updTags()}
+ if(QG.lvl===0||(QG.alt=!QG.alt)){updLabels();updGeo()}if(borderL){borderL.visible=simY>=1945&&cam.alt>3;borderL.material.opacity=clamp((cam.alt-3)/20,0,.35)}cityT-=dt;if(cityT<=0){cityT=.5;updCityLabels();cityCT-=.5;if(Math.floor(simY)!==Math.floor(cityT0)||cityCT<=0){cityCT=4;updCities();cityT0=simY}}tagT-=dt;if(tagT<=0){tagT=.12;updTags()}
  saveT-=dt;if(saveT<=0){saveT=DB?60:20;save()}syncT-=dt;if(syncT<=0){syncT=45;syncCheck()}
 trimUploads(); const _t1=performance.now();renderer.render(scene,camera);if(window.__PT){__PT.js+=_t1-_t0;__PT.r+=performance.now()-_t1;__PT.n++}if(REC.on)recFrame()}
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
