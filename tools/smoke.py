@@ -1,5 +1,6 @@
 # Stability check: loads the built test page in headless Chrome at several eras,
 # runs big scenes, and fails if any page error happens.  Usage: python3 tools/smoke.py
+# Only some cases while working: python3 tools/smoke.py 1815 -480  (the full run is still required before pushing)
 import asyncio, subprocess, sys, os, time
 from playwright.async_api import async_playwright
 ROOT=os.path.dirname(os.path.abspath(__file__))
@@ -11,7 +12,9 @@ async def main():
     async with async_playwright() as p:
       chrome='/usr/bin/google-chrome' if os.path.exists('/usr/bin/google-chrome') else None
       b=await p.chromium.launch(executable_path=chrome,args=['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist'])
+      only={int(float(a)) for a in sys.argv[1:] if a.lstrip('-').replace('.','').isdigit()}
       for y,cmd in CASES:
+        if only and y not in only:continue
         pg=await b.new_page(viewport={'width':393,'height':760});errs=[]
         pg.on('pageerror',lambda e: errs.append(str(e)))
         await pg.goto(f'http://localhost:8799/test.html#{y}');await pg.wait_for_timeout(12000)

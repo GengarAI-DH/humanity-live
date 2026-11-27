@@ -24,3 +24,5 @@ tools/deeptime.json
 tools/battles.json
 tools/cards.json
 tools/interactions.json
+tools/shots/
+tools/__pycache__/
