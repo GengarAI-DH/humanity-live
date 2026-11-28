@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><link rel="manifest" href="manifest.json"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="icon.png">
+<html lang="en"><head><link rel="manifest" href="manifest.json"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="/a/icon-180.png">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Humanity, Live</title><meta name="description" content="All of Earth’s history, live: from the last dinosaurs 71 million years ago to 2100, on a real clock nobody can speed up. One shared world, real events, live chat."><meta property="og:type" content="website"><meta property="og:site_name" content="Humanity, Live"><meta property="og:title" content="Humanity, Live: Earth’s history, happening now"><meta property="og:description" content="From the last dinosaurs to 2100 on a real clock nobody can speed up. The asteroid hits January 26. Watch it with everyone."><meta property="og:url" content="https://humanitylivewatch.com/"><meta property="og:image" content="https://humanitylivewatch.com/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Humanity, Live"><meta name="twitter:description" content="Earth’s history, live, from the dinosaurs to 2100. One shared world on a real clock."><meta name="twitter:image" content="https://humanitylivewatch.com/og.png"><meta name="theme-color" content="#03050a">
@@ -97,6 +97,16 @@ body.playing #dock,body.playing #pills,body.playing #rot,body.playing #tm,body.p
 #playUI .pBtns button{min-width:112px;padding:12px 14px;font-size:15px;border-radius:14px}
 #playUI .pBtns button.on{background:#f5c542;color:#1a1208}
 .playB{margin-top:8px;padding:8px 12px;border-radius:10px;background:#ff8a3d;color:#1a1208;font-weight:800;border:0}
+#bld{position:fixed;inset:0;z-index:58}
+#bld .bF{position:fixed;pointer-events:none;margin-left:-16px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+#bld .bF svg{display:block;animation:bBob .28s ease-in-out infinite alternate}
+#bld .bF .bl{animation:bStep .28s ease-in-out infinite alternate;transform-origin:50% 60%}
+#bld .bF.wave svg{animation:none}#bld .bF.wave .ba{animation:bWave .25s ease-in-out infinite alternate;transform-origin:50% 40%}
+@keyframes bBob{from{transform:translateY(0)}to{transform:translateY(-2px)}}
+@keyframes bStep{from{transform:skewX(-10deg)}to{transform:skewX(10deg)}}
+@keyframes bWave{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
+#bld .bF.spr{animation:bBob .28s ease-in-out infinite alternate}
+#bld .bF.spr.wave{animation:none;background-position:var(--x1) var(--y)!important}
 .card.half .e{opacity:.55}
 .card.done{box-shadow:0 0 0 2px #f5c542,0 0 14px #f5c54288}
 .card .ck{position:absolute;right:6px;bottom:4px;font:800 11px Archivo;color:#f5c542}
@@ -2914,6 +2924,30 @@ async function cQuiz(cid){const c=CARDS.by[cid];if(!c||cState(cid)!=='quiz')retu
 ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
 document.addEventListener('touchmove',e=>{if(e.touches.length>1&&!(e.target&&e.target.closest&&e.target.closest('.sheet,#cardBig,#wiki')))e.preventDefault()},{passive:false});
 let _lastTap=0;document.addEventListener('touchend',e=>{const n=Date.now();if(n-_lastTap<300&&!(e.target&&e.target.closest&&(e.target.closest('input,textarea,button,a')&&!e.target.closest('#playUI'))))e.preventDefault();_lastTap=n},{passive:false});
+// ---- opening: tiny builders of the current era carry the interface into place, wave and leave (once per visit, tap to skip) ----
+function builderKind(Y){return Y<-66.04e6?'raptor':Y<-2.6e6?'mammal':Y<-10000?'cave':Y<1500?'farmer':Y<1900?'worker':'modern'}
+function builderSVG(k){const P={raptor:['#7a5c3a','#c9a46a'],mammal:['#6b5440','#a88b6a'],cave:['#8a6a4a','#5a3d24'],farmer:['#a8865a','#e6d3a8'],worker:['#3e4a5c','#5a3d24'],modern:['#2f6fb0','#f5c542']}[k],b=P[0],a=P[1];
+ if(k==='raptor')return`<svg viewBox="0 0 40 26" width="60" height="39" aria-hidden="true"><path d="M4 14 Q14 9 22 11 L30 8 L36 9 L33 12 L27 13 Q24 17 20 17 L10 16 Z" fill="${b}"/><path d="M14 11 Q18 7 22 11" fill="${a}"/><circle cx="32" cy="9.5" r="0.9" fill="#111"/><g class="bl"><path d="M17 17 L15 25 M21 17 L23 25" stroke="${b}" stroke-width="2.2" stroke-linecap="round"/></g></svg>`;
+ if(k==='mammal')return`<svg viewBox="0 0 34 24" width="50" height="35" aria-hidden="true"><ellipse cx="16" cy="13" rx="10" ry="6" fill="${b}"/><circle cx="27" cy="10" r="4.5" fill="${b}"/><path d="M6 12 Q0 6 3 2" stroke="${a}" stroke-width="2" fill="none"/><circle cx="28.5" cy="9" r="0.9" fill="#111"/><g class="bl"><path d="M10 18 L9 23 M21 18 L22 23" stroke="${b}" stroke-width="2.4" stroke-linecap="round"/></g></svg>`;
+ const hat=k==='modern'?`<path d="M9 5 Q14 0 19 5 Z" fill="${a}"/><rect x="8" y="4.5" width="12" height="1.6" fill="${a}"/>`:k==='worker'?`<rect x="9" y="3" width="10" height="3" rx="1" fill="${a}"/>`:k==='farmer'?`<ellipse cx="14" cy="5" rx="7" ry="1.6" fill="${a}"/>`:'';
+ const body=k==='cave'?`<path d="M9 12 L19 12 L20 22 L8 22 Z" fill="${b}"/><path d="M9 12 L20 22" stroke="${a}" stroke-width="1"/>`:`<rect x="9" y="12" width="10" height="10" rx="2.5" fill="${b}"/>`;
+ return`<svg viewBox="0 0 28 34" width="32" height="39" aria-hidden="true"><circle cx="14" cy="8" r="4.2" fill="#e0b48a"/>${hat}${body}<g class="ba"><path d="M9 14 L5 9 M19 14 L23 9" stroke="#e0b48a" stroke-width="2.2" stroke-linecap="round"/></g><g class="bl"><path d="M12 22 L11 32 M16 22 L17 32" stroke="#3a2c20" stroke-width="2.4" stroke-linecap="round"/></g></svg>`}
+const BLD_ROW={raptor:0,mammal:1,cave:2,farmer:3,worker:4,modern:5};let BLDIMG=null;
+(()=>{if(window.__TEST)return;const i=new Image();i.onload=()=>{BLDIMG=i};i.src='/a/builders.webp'})();
+function builderEl(k){const f=document.createElement('div');f.className='bF';if(BLDIMG){const H=k==='raptor'||k==='mammal'?44:58,s=H/160,r=BLD_ROW[k];f.classList.add('spr');f.style.cssText=`width:${(220*s)|0}px;height:${H}px;background:url(/a/builders.webp) no-repeat;background-size:${(440*s)|0}px ${(960*s)|0}px;--x0:0px;--x1:${-(220*s)|0}px;background-position:0 ${-(r*160*s)|0}px;--y:${-(r*160*s)|0}px;margin-left:${-(110*s)|0}px`}else f.innerHTML=builderSVG(k);return f}
+let BUILT=false;
+function builders(){if(BUILT||window.__TEST||PV!==null)return;BUILT=true;setTimeout(builders2,500)}
+function builders2(){try{if(sessionStorage.getItem('hl_built'))return;sessionStorage.setItem('hl_built','1')}catch(e){}
+ if(matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ const k=builderKind(simY),T=[['yearbox',-1,-1],['pills',-1,1],['dock',1,1],['rot',1,0]].map(([id,dx,dy])=>[$(id),dx,dy]).filter(t=>t[0]&&t[0].getClientRects().length&&getComputedStyle(t[0]).display!=='none'),lay=document.createElement('div');lay.id='bld';document.body.appendChild(lay);
+ const done=()=>{if(!lay.parentNode)return;for(const[el]of T){el.style.transition='';el.style.transform=''}lay.remove()};
+ lay.addEventListener('pointerdown',done);
+ T.forEach(([el,dx,dy],i)=>{const r=el.getBoundingClientRect(),off=`translate(${dx*(innerWidth*.7)}px,${dy*120}px)`;el.style.transition='none';el.style.transform=off;
+  const n=k==='raptor'||k==='mammal'?2:3,crew=[];for(let j=0;j<n;j++){const f=builderEl(k);const x=r.left+(j+.5)/n*r.width,y=(dy>0?r.top:r.bottom)-(dy>0?24:0);f.style.left=x+'px';f.style.top=(dy>0?r.top-(f.style.height?parseInt(f.style.height)-4:38):r.bottom-8)+'px';f.style.transform=off+(dx>0?' scaleX(-1)':'');lay.appendChild(f);crew.push([f,dx])}
+  setTimeout(()=>{el.style.transition='transform 1.1s cubic-bezier(.2,.8,.3,1)';el.style.transform='';crew.forEach(([f,d])=>{f.style.transition='transform 1.1s cubic-bezier(.2,.8,.3,1)';f.style.transform=d>0?'scaleX(-1)':''})},120+i*220);
+  setTimeout(()=>crew.forEach(([f])=>f.classList.add('wave')),1300+i*220);
+  setTimeout(()=>crew.forEach(([f,d])=>{f.classList.remove('wave');f.style.transition='transform .8s ease-in,opacity .8s';f.style.transform=`translate(${-d*(innerWidth*.8)||innerWidth*.8}px,0)`+(d>0?'':' scaleX(-1)');f.style.opacity='0'}),2200+i*220)});
+ setTimeout(done,3900)}
 // ================== play as an animal: steer a real wild animal of this era and place, and live its day ==================
 // It stays the same simulated animal: other animals still hunt, flee from or ignore it by the same sourced interaction rules.
 let PLAY=null,PLAYC=null,PIN={x:0,y:0,run:false},PHUN=1,PT0=0,pKeys={};
@@ -3271,8 +3305,8 @@ async function boot(){
  cam.alt=1.1;setBtn();updHud()}
 function newWorld(){A=[];AM.clear();D.clear();simY=yearAt(0);NID=1;discI=0;EV=[];while(discI<DISC.length&&DISC[discI][0]<=simY){const d=DISC[discI++];EV.unshift({y:d[0],t:d[1],k:d[2]})}}
 async function start(){setTimeout(()=>{loadCities();applyLite()},2500);initGeo();initTerrain();initPlates();applyClimate(-70000,true);makeGlobe();initMeshes();initLabels();initTags();initGeo2();initSpace();resize();await boot();
- $('load').style.display='none';if(PV!==null)pvBanner();if(!LS.get(KEY+'_seen')){$('intro').style.display='grid'}requestAnimationFrame(frame)}
-$('go').onclick=()=>{$('intro').style.display='none';LS.set(KEY+'_seen','1');if(LS.get('hl_tour')!=='1')setTimeout(()=>runTour(0),1200)};
+ $('load').style.display='none';if(PV!==null)pvBanner();if(!LS.get(KEY+'_seen')){$('intro').style.display='grid'}else builders();requestAnimationFrame(frame)}
+$('go').onclick=()=>{$('intro').style.display='none';LS.set(KEY+'_seen','1');builders();if(LS.get('hl_tour')!=='1')setTimeout(()=>runTour(0),1200)};
 if(window.__TEST)window.HS={X:c=>eval(c),get S(){return S},get A(){return A},get WA(){return WA},cam,fly:(k,alt)=>{const s=SK[k]||WZ[k];cam.t.copy(s.U);cam.alt=alt||.8;cam.fly=null},flyV:(la,lo,alt)=>{cam.t.copy(v3(la,lo,1));cam.alt=alt;cam.fly=null},impact:startImpact};
 setTimeout(()=>{start().catch(err=>{$('load').textContent='Something went wrong: '+err.message;console.error(err)})},30);
 }
