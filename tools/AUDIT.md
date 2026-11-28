@@ -1,5 +1,12 @@
 # Realism audit log (newest first)
 
+## 2026-11-28 (second run)
+Audited: Eocene Egypt / Fayum and Wadi al-Hitan (40 Ma; species list); Kilwa, Tanzania (1331 CE; ground, region and continent views); Bangladesh delta (2100 CE; views). Screenshots were mostly night or covered by the intro card, so this run relied on the data tables.
+Checked fine: Dorudon 41-34 Ma, Gigantophis 41-37 Ma, Anthropornis, Hesperocyon, Sarkastodon ranges; 2100 header (sea +0.55 m, +2.7 C) is in the projected range; Sundarbans label present.
+Fixed:
+- Enchodus (sabre-toothed herring) was set to live 165 Ma (Jurassic) to 16 Ma. The genus is a Cretaceous fish: earliest species late Albian / earliest Cenomanian of Mexico (Fielitz and Gonzalez-Rodriguez 2010, J. Vertebrate Paleontology 30(5)); Barremian/Aptian Brazilian remains are too fragmentary; the latest possible records are earliest Eocene India and may be reworked (Wikipedia "Enchodus"). Range set to 100.5-56 Ma.
+Not changed: Merycoidodon starts 46 Ma but is thought to be Chadronian-Whitneyan (about 37-29 Ma); the page could not be fetched to confirm. Mesonyx starts 56 Ma (probably about 50). Numidotherium sites 41-34 Ma look late.
+
 ## 2026-11-28
 Audited: Late Jurassic Morrison Formation, Wyoming (150 Ma; species and plant lists, ground and region views); L'Anse aux Meadows, Newfoundland (1000 CE; journey dates); Rapa Nui (1400 CE; settlement start, moai, language). Also read the whole built-in deep-time species table for date and region errors.
 Checked fine: Morrison fauna ranges (Allosaurus, Stegosaurus, Diplodocus, Brachiosaurus) and plants (Araucaria, ginkgo, horsetail); Norse journey dates (Erik the Red about 985, L'Anse aux Meadows tree rings 1021); Rapa Nui settlement 1200 and moai 1250 against radiocarbon dating (Wilmshurst et al. 2011, PNAS); Hawaii 1000, Aotearoa 1280.
