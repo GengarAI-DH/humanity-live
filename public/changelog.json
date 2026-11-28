@@ -1,6 +1,10 @@
 [
 {
 "when": "Nov 27",
+"text": "Smoother in modern eras: towns no longer rebuild themselves one by one when nothing under them changed. Tibet and the Andes keep snow on their high peaks, not across the whole dry plateau."
+},
+{
+"when": "Nov 27",
 "text": "Zoomed out, Earth slowly turns about its real axis (stops while you touch it), and the Moon, Sun and planets show where they really are right now. Tap any map name, ancient sea, planet or storm for its card and Wikipedia link; storms show their path and where they're headed, at their real sizes. Clouds drift with the wind belts."
 },
 {
@@ -154,9 +158,5 @@
 {
 "when": "Nov 27",
 "text": "About 2,700 real significant earthquakes from 2150 BCE to today, from NOAA's global database: each strikes on its real date and place. The deadliest and biggest shake the globe; tap any for its toll, shaking, houses lost and whether it raised a tsunami."
-},
-{
-"when": "Nov 27",
-"text": "138 real historic storms on their real dates: hurricanes, typhoons and cyclones with measured winds and pressures, plus record tornadoes, floods, blizzards, heatwaves, hailstorms and dust storms. Tap one for its record and toll."
 }
 ]
