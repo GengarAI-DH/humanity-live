@@ -31,7 +31,6 @@ Everything you implement must be as correct as possible in every way: real posit
 - 2026-11-27: public/heritage.json (1,270 UNESCO World Heritage Sites, 224 with Wikidata built/founded dates) is not read by tools/cards.js yet; sites in danger and the oldest built dates (Göbekli Tepe, Jericho, Çatalhöyük, Stonehenge) would make good cards. (content run)
 - 2026-11-27: public/sky.json (218 eclipses, comets, supernovae, transits of Venus, aurorae, meteor storms) is not read by tools/cards.js yet; its big entries (Halley returns, SN 1006/1054/1572/1604/1987A, Carrington Event, 2017/2024/2045 eclipses) would make good cards. (content run)
 - 2026-11-27: 648 of 2,934 cards in public/cards.json have no fact line (mostly milestones and events; 47 milestones now take facts from inventions.json). Teach tools/cards.js to take facts from the matching DISC/BIG entries or data files. (data checker)
-- 2026-11-27: The Chicxulub milestone card uses its whole sentence as its Wikipedia title. Give milestone and event cards a proper Wikipedia title. (data checker)
 
 ## graphics, map, art, behavior, ecosystem, realism
 - 2026-11-27 (behavior/migrations): tools/annoy.py fails at altitude 2 (med 5/min, mod 4/min): the '🐾 <migration> · <season>' popups fire four times in a minute over East Africa (Great Nile Migration, globe skimmer, wheatear, cuckoo). Throttle them like the wildlife moments. (content run, found with annoy.py)

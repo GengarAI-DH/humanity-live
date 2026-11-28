@@ -77,10 +77,13 @@ for (const p of (spj && spj.plants || [])) {
     cards.push([id, s[0], 'pl', p[0], 1, Math.round(Math.max(a, s[2]) + 1), 'A fossil plant found in rocks of this age', clean(p[0]), 0]);
   }
 }
+// the page's WIKI table (event name -> Wikipedia title), without its journeys spread
+const WIKIT = (() => { const i = tpl.indexOf('const WIKI={'); if (i < 0) return {}; const j = tpl.indexOf('};', i); try { return Function('return ' + tpl.slice(i + 11, j + 1).replace(/\.\.\.Object\.fromEntries\(JRN\.map\([^)]*\)\),/, ''))() } catch (e) { return {} } })();
+const wikiOf = n => WIKIT[n] || WIKIT[String(n).split(':')[0].trim()] || null;
 // big events (witness cards: only claimable while the event is live)
-for (const b of lit('BIG') || []) add('ev', b[1], b[1], b[0], /asteroid|mass extinction|atomic|moon|supereruption/i.test(b[1]) ? 5 : 4, '', b[1], 1);
-// milestones and smaller events
-for (const d of lit('DISC') || []) add('ms', d[1], d[1], d[0], 2, '', null, 0);
+for (const b of lit('BIG') || []) add('ev', b[1], b[1], b[0], /asteroid|mass extinction|atomic|moon|supereruption/i.test(b[1]) ? 5 : 4, '', wikiOf(b[1]) || b[1], 1);
+// milestones and smaller events (Wikipedia titles from the page's WIKI table, matched on the whole name or the part before a colon)
+for (const d of lit('DISC') || []) add('ms', d[1], d[1], d[0], 2, '', wikiOf(d[1]), 0);
 // wonders
 for (const w of (J('wonders.json') || {}).won || []) add('wo', w[0], w[0], w[1], 3, w[9], w[8], 0);
 // journeys
