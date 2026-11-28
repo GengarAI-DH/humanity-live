@@ -492,6 +492,7 @@ function applyClimate(Y,force){
  {const wb0=BMD&&!paleo?.82*clamp(1-CLIM.ice*.75,0,1)*clamp(1-(-Y-130000)/5.7e6,.5,1):0;if(wb0>0){if(!BML)bmlMake();const gS=CLIM.g||0,shelf=CLIM.sea>.003,old=Y<-4000;for(let y=0;y<TH;y++){const cy=Math.min(GH-1,(y*sy)|0)*GW;for(let x=0;x<TW;x++){const k=y*TW+x,p=k*4,r=BMD[p],g=BMD[p+1],b=BMD[p+2],ck=cy+Math.min(GW-1,(x*sx)|0);const wat=b>r+12||(b>25&&r<30&&g<b+20);if(RELF[k]<0){if(wat){D[p]=D[p]*(1-wb0)+r*wb0;D[p+1]=D[p+1]*(1-wb0)+g*wb0;D[p+2]=D[p+2]*(1-wb0)+b*wb0}continue}
   if(old&&BI[ck]===1)continue;if(wat&&shelf&&E0[ck]<0)continue;let wb=wb0;if(gS>0)wb*=1-clamp(SHS[ck]*gS*1.5,0,1);if(old&&((r>135&&r>b+35&&g>b)!==(BI[ck]===6||BI[ck]===16)))wb*=.2;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(!wat&&mx>185&&mx-mn<40)continue;
   if(!wat&&old){const f=(BML[k]/128-1)*(1-wb)*.85;if(f){const m=1+f;D[p]=Math.min(255,D[p]*m);D[p+1]=Math.min(255,D[p+1]*m);D[p+2]=Math.min(255,D[p+2]*m)}}
+  if(wat&&old)continue; // today's lakes on land are not painted into older eras (Lake Victoria was dry at the glacial maximum); dated lakes come from the water layer
   const w2=wat?1:wb;D[p]=D[p]*(1-w2)+r*w2;D[p+1]=D[p+1]*(1-w2)+g*w2;D[p+2]=D[p+2]*(1-w2)+b*w2}}}}
  tctx.putImageData(img,0,0);sctx.putImageData(simg,0,0);
  if(!paleo){tctx.strokeStyle='rgba(58,112,150,.95)';tctx.lineCap=tctx.lineJoin='round';
@@ -500,6 +501,8 @@ function applyClimate(Y,force){
    for(const l of WATER.l){const a=l[0]>8?0:lakeA(l[1],Y);if(a<=0||lakeIce(l[2]))continue;tctx.globalAlpha=a;tctx.beginPath();let px=null;l[2].forEach((c,i)=>{const[X,Yp]=P(c);if(i&&Math.abs(X-px)>TW/2){tctx.moveTo(X,Yp)}else i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp);px=X});tctx.closePath();tctx.fill()}tctx.globalAlpha=1;
    for(const r of WATER.r){tctx.strokeStyle='rgba(74,140,196,.95)';tctx.lineWidth=Math.max(.8,2.6-r[0]*.24);tctx.beginPath();let px=null;const ri=ICEK2>=0||(CLIM.ice||0)>0;r[1].forEach((c,i)=>{const[X,Yp]=P(c);if(ri&&iceAt(c[1],c[0])){px=null;return}if(px===null||Math.abs(X-px)>TW/2)tctx.moveTo(X,Yp);else tctx.lineTo(X,Yp);px=X});tctx.stroke()}}
   else for(const r of RIVERS){tctx.lineWidth=1.4;tctx.beginPath();r.forEach((p,i)=>{const X=(p[1]+180)/360*TW,Yp=(90-p[0])/180*TH;i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp)});tctx.stroke()}}
+ // water mask for the ground scenes: whatever is painted as lake or river on land counts as water down there too
+ try{const id=tctx.getImageData(0,0,TW,TH).data;if(!WMASK)WMASK=new Uint8Array(TW*TH);for(let k=0;k<TW*TH;k++){const p=k*4,r=id[p],g=id[p+1],b=id[p+2];WMASK[k]=RELF[k]>=0&&b>r+20&&b>=g&&b>45?1:0}}catch(e){}
  if(globeTex){globeTex.needsUpdate=true;specTex.needsUpdate=true}
  if(globeGeo)updGlobeHeights();
  placeZones(Y);
@@ -667,9 +670,12 @@ function frameSite(s){const u=v3(s.lat,s.lon,1),n=new THREE.Vector3(0,1,0).addSc
  s.U=u;s.E=e;s.So=n.clone().negate();s.hc=Math.max(hAt(s.lat,s.lon),.035);s.O=u.clone().multiplyScalar(R+s.hc);
  s.u=[u.x,u.y,u.z];s.e=[e.x,e.y,e.z];s.so=[s.So.x,s.So.y,s.So.z];s.o=[s.O.x,s.O.y,s.O.z];
  s.M=new THREE.Matrix4().makeBasis(s.E,s.U,s.So).setPosition(s.O);}
-function gH(s,x,z){const X=s.o[0]+s.e[0]*x+s.so[0]*z,Y=s.o[1]+s.e[1]*x+s.so[1]*z,Z=s.o[2]+s.e[2]*x+s.so[2]*z;return hDir(X,Y,Z)}
+// wild places (no settlement tier) treat every painted lake and river as water, so trees don't grow in it and land animals walk around it;
+// settlements keep building along their rivers as real towns do
+let WMASK=null;function wetXYZ(X,Y,Z){if(!WMASK)return 0;const p=ll(X,Y,Z),x=((Math.floor((p[1]+180)/360*TW)%TW)+TW)%TW,y=clamp(Math.floor((90-p[0])/180*TH),0,TH-1);return WMASK[y*TW+x]}
+function gH(s,x,z){const X=s.o[0]+s.e[0]*x+s.so[0]*z,Y=s.o[1]+s.e[1]*x+s.so[1]*z,Z=s.o[2]+s.e[2]*x+s.so[2]*z,h=hDir(X,Y,Z);return h>=0&&s.tier===undefined&&wetXYZ(X,Y,Z)?-.001:h}
 function gY(s,x,z){const X=s.o[0]+s.e[0]*x+s.so[0]*z,Y=s.o[1]+s.e[1]*x+s.so[1]*z,Z=s.o[2]+s.e[2]*x+s.so[2]*z,l=Math.hypot(X,Y,Z),h=hDir(X,Y,Z);
- if(h<0)return null;const r=R+h;return r*((X*s.u[0]+Y*s.u[1]+Z*s.u[2])/l)-(R+s.hc)}
+ if(h<0||(s.tier===undefined&&wetXYZ(X,Y,Z)))return null;const r=R+h;return r*((X*s.u[0]+Y*s.u[1]+Z*s.u[2])/l)-(R+s.hc)}
 function homeStyle(s,t){const c=s.c,col=(s.x.col||COLC.has(c))&&t>=5;
  if(t>=7)return'tower';if(t===6)return'brick';
  if(t===5)return col?'colonial':(c==='cn'||c==='jp'||c==='sea')?'eastern':(c==='me'||c==='eg'||c==='in')?'flatstone':'timber';
@@ -1368,7 +1374,7 @@ function ecoStep(dt){for(const z of WZ){if(!z.N||!z.key)continue;const near=S.fi
 function rebuildWild(){WA=[];for(const z of WZ){if(!z.U){frameSite(z);z.rad=.3}const L=faunaFor(z,simY),key=L.map(x=>x.join(':')).join();if(z.key===key&&z.animals&&z.ok){WA.push(...z.animals);continue}z.animals=null;const i0=WA.length;z.key=key;z.ok=1;z.fire=false;
   for(const[sp,n]of L){const S_=spec(sp);if(sp==='locals'){const t=localPeople(z,simY)||0;S_.n=t<=1?'Hunter-gatherer band':t<=3?(['st','arc'].includes(z.type)?'Herder family':'Farming family'):t<=5?'Villagers':t<=6?'Farmers':'Rural households';S_.c=t<=1?0x7a5a3a:t<=4?0xb9a37f:t<=6?0x4a4a52:0x457b9d;if(t<=2)z.fire=true}if(S_.hom&&sp!=='locals'){const h=HOM.find(x=>'hom_'+x[0]===sp);if(h&&-simY/1e6<=h[7])z.fire=true}
    const hk=hash(z.i*13+sp.length,sp.charCodeAt(0))*6.283,land=S_.hab==='l'&&!S_.hom;
-   for(let i=0;i<n;i++){let x0=(rnd()-.5)*.8,z0=(rnd()-.5)*.8;if(land){if(S_.pred){const r=.55+rnd()*.4,an=hk+i*1.7;x0=(z.cx||0)+Math.cos(an)*r;z0=(z.cz||0)+Math.sin(an)*r}else{x0=(z.cx||0)+Math.cos(hk)*.18+(rnd()-.5)*.12;z0=(z.cz||0)+Math.sin(hk)*.18+(rnd()-.5)*.12}if(gH(z,x0,z0)<0){x0*=.3;z0*=.3}}
+   for(let i=0;i<n;i++){let x0=(rnd()-.5)*.8,z0=(rnd()-.5)*.8;if(land){if(S_.pred){const r=.55+rnd()*.4,an=hk+i*1.7;x0=(z.cx||0)+Math.cos(an)*r;z0=(z.cz||0)+Math.sin(an)*r}else{x0=(z.cx||0)+Math.cos(hk)*.18+(rnd()-.5)*.12;z0=(z.cz||0)+Math.sin(hk)*.18+(rnd()-.5)*.12}for(let t=0;t<14&&gH(z,x0,z0)<0;t++){const a2=rnd()*6.283,r2=rnd()*(t<7?.6:1.4);x0=(z.cx||0)+Math.cos(a2)*r2;z0=(z.cz||0)+Math.sin(a2)*r2}}
     const a={z:z.i,zo:z,type:sp,sp:S_,x:x0,zz:z0,y:0,tx:0,tz:0,ty:0,w:rnd()*6,h:rnd()*6.28,ph:rnd()*6.28};a.tx=a.x;a.tz=a.zz;a.y=a.ty=gY(z,a.x,a.zz)||0;WA.push(a)}}z.animals=WA.slice(i0);z.N={};z.K={};z.nB={};for(const a of z.animals){if(!(a.type in z.N)){z.K[a.type]=z.N[a.type]=abund(a.type);z.nB[a.type]=0}a.idx=z.nB[a.type]++}}
  const cnt={};for(const a of WA){const m=a.sp.m,M=WMESH[m];if(!M||m==='swarm')continue;const i=cnt[m]=(cnt[m]||0);cnt[m]++;if(i>=M.instanceMatrix.count)continue;_c.setHex(a.sp.c);M.instanceColor.setXYZ(i,_c.r,_c.g,_c.b);if(m==='hum'){_c.setHex(a.type==='robot'?0xb8c0c8:0x4a3426);homH.instanceColor.setXYZ(i,_c.r,_c.g,_c.b)}}
  for(const k in WMESH)WMESH[k].instanceColor.needsUpdate=true;homH.instanceColor.needsUpdate=true}
