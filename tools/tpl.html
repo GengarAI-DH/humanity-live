@@ -2931,8 +2931,9 @@ function updImpact(dt){if(!IMP)return;const I=IMP;I.t+=dt;const surf=I.dir.clone
  if(I.t>23){scene.remove(I.met,I.flash,I.ring);IMP=null;if(!catching)flyTo(I.dir,60)}}
 function impactWinter(){const k=simY>=-66.04e6&&simY<-65.9e6?1-(simY+66.04e6)/.14e6:0;return clamp(k,0,1)}
 // ================== sun ==================
+// near the ground at night a dim blue starlight ambient keeps land and animals faintly visible, brighter when a full moon is up (phase from the Moon's angle to the Sun)
 function updSun(){const now=new Date(),y0=Date.UTC(now.getUTCFullYear(),0,0),doy=(now-y0)/864e5,decl=-23.44*Math.cos(2*Math.PI*(doy+10)/365),utc=now.getUTCHours()+now.getUTCMinutes()/60+now.getUTCSeconds()/3600;
- sunDir=v3(decl,(12-utc)*15,1);const iw=impactWinter();sun.intensity=1.15*(1-.75*iw);amb.color.setHex(iw>0?0x8a6a58:0x9aaad0);{const ld=cam.t.lengthSq()?cam.t.dot(sunDir):1,x=clamp((ld+.2)/.28,0,1),nk=1-x*x*(3-2*x),hk=clamp(cam.alt/60,0,1);amb.intensity=.46*(1-nk*(.42-.2*hk));if(iw<=0&&nk>0)amb.color.lerp(AMB_NIGHT,nk*.55)}scene.background.setHex(iw>0?0x120a06:0x03050a);sun.position.copy(sunDir).multiplyScalar(600);for(const s of S)if(s.U)s.day=s.U.dot(sunDir);for(const z of WZ)if(z.U)z.day=z.U.dot(sunDir);ecoStep(.25*(simY<-70000?1:1))}
+ sunDir=v3(decl,(12-utc)*15,1);const iw=impactWinter();sun.intensity=1.15*(1-.75*iw);amb.color.setHex(iw>0?0x8a6a58:0x9aaad0);{const ld=cam.t.lengthSq()?cam.t.dot(sunDir):1,x=clamp((ld+.2)/.28,0,1),nk=1-x*x*(3-2*x),hk=clamp(cam.alt/60,0,1);let mk=0;if(moon&&nk>0){const L=moon.position.length()||1,ce=moon.position.dot(sunDir)/L,up=cam.t.dot(moon.position)/L;mk=(1-ce)*.5*clamp((up+.05)/.2,0,1)}amb.intensity=.46*(1-nk)+nk*lerp(.36+.2*mk,.267+.092*hk,clamp(hk*3,0,1));if(iw<=0&&nk>0)amb.color.lerp(AMB_NIGHT,nk*.55)}scene.background.setHex(iw>0?0x120a06:0x03050a);sun.position.copy(sunDir).multiplyScalar(600);for(const s of S)if(s.U)s.day=s.U.dot(sunDir);for(const z of WZ)if(z.U)z.day=z.U.dot(sunDir);ecoStep(.25*(simY<-70000?1:1))}
 
 // ================== main loop ==================
 let syncT=45,last=performance.now(),acc=0,hudT=0,saveT=0,nightT=0,herdT=0;
