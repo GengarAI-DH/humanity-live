@@ -371,6 +371,8 @@ async function realWeather(url, ctx) {
 // The update runs can't reach these sites directly, so they leave a job in the IMPORTS store
 // (key "job:<id>", value = {"url": "..."}); every minute this downloads it and saves the result
 // as "res:<id>" (raw bytes, metadata = status, type, url, size). Only approved official hosts are allowed.
+// Art files (3D models made for the site) may only be imported as kept files ("keep": "<name>"), served at /a/<name>.
+const ART_HOSTS = ["d2ol7oe51mr4n9.cloudfront.net"];
 const IMPORT_HOSTS = ["volcano.si.edu", "www.ngdc.noaa.gov", "ngdc.noaa.gov", "www.ncei.noaa.gov", "ncei.noaa.gov", "earthquake.usgs.gov", "paleobiodb.org", "training.paleobiodb.org", "whc.unesco.org", "query.wikidata.org", "www.wikidata.org", "api.gbif.org", "zenodo.org", "www.naturalearthdata.com", "naciscdn.org", "data.giss.nasa.gov", "www.ncdc.noaa.gov", "psl.noaa.gov", "www.nhc.noaa.gov", "www.spc.noaa.gov", "eonet.gsfc.nasa.gov", "ssd.jpl.nasa.gov", "cneos.jpl.nasa.gov", "www.lpi.usra.edu", "impact.uwo.ca", "api.iucnredlist.org", "en.wikipedia.org"];
 async function runImports(env) {
   if (!env.IMPORTS) return; const list = await env.IMPORTS.list({ prefix: "job:", limit: 5 });
@@ -378,7 +380,7 @@ async function runImports(env) {
     const id = k.name.slice(4); let job; try { job = JSON.parse(await env.IMPORTS.get(k.name)); } catch (e) { await env.IMPORTS.delete(k.name); continue; }
     let meta = { url: job.url, status: 0, type: "", size: 0, at: Date.now() }, body = new Uint8Array();
     try {
-      const u = new URL(job.url); if (u.protocol !== "https:" || !IMPORT_HOSTS.includes(u.hostname)) { meta.status = 403; meta.error = "host not on the approved list"; }
+      const u = new URL(job.url), keep = typeof job.keep === "string" && /^[a-z0-9_.-]{1,60}$/.test(job.keep) ? job.keep : ""; if (u.protocol !== "https:" || !(IMPORT_HOSTS.includes(u.hostname) || (keep && ART_HOSTS.includes(u.hostname)))) { meta.status = 403; meta.error = "host not on the approved list"; }
       else {
         const headers = { "user-agent": "HumanityLive/1.0 (educational Earth history simulation; buildswithdevin@gmail.com)", accept: job.accept || "*/*" };
         if (u.hostname === "api.iucnredlist.org" && env.IUCN_TOKEN) headers.authorization = "Bearer " + env.IUCN_TOKEN;
@@ -388,6 +390,7 @@ async function runImports(env) {
         if (buf.length > 24 * 1024 * 1024) { meta.error = "too big (over 24 MB); filter the request"; meta.size = buf.length; } else { body = buf; meta.size = buf.length; }
       }
     } catch (e) { meta.error = String(e).slice(0, 300); }
+    if (job.keep && meta.status === 200 && body.length && /^[a-z0-9_.-]{1,60}$/.test(job.keep)) await env.IMPORTS.put("file:" + job.keep, body, { metadata: { type: meta.type, size: body.length, url: job.url, at: meta.at } });
     await env.IMPORTS.put("res:" + id, body, { metadata: meta, expirationTtl: 3 * 86400 }); await env.IMPORTS.delete(k.name);
   }
 }
@@ -402,6 +405,7 @@ export default {
     if (url.pathname === "/api/stats") return room.fetch(new Request(url.origin + "/stats"));
     if (url.pathname.startsWith("/api/admin/")) return adminApi(url.pathname.slice(11), request, env, room);
     if (url.pathname.startsWith("/api/cards/")) { const op = url.pathname.slice(11); if (!/^(catalog|me|name|daily|spot|witness|offers|offer|cancel|accept|google|signout|shop|top)$/.test(op)) return J({ ok: false }, 404); return cardsApi(op, request, env, room); }
+    if (url.pathname.startsWith("/a/")) { const n = url.pathname.slice(3); if (!/^[a-z0-9_.-]{1,60}$/.test(n)) return new Response("not found", { status: 404 }); const v = await env.IMPORTS.getWithMetadata("file:" + n, { type: "arrayBuffer", cacheTtl: 3600 }); if (!v.value) return new Response("not found", { status: 404 }); return new Response(v.value, { headers: { "content-type": "application/octet-stream", "cache-control": "public, max-age=86400", "access-control-allow-origin": "*" } }); }
     if (url.pathname === "/api/wx") return realWeather(url, ctx);
     if (url.pathname === "/api/ideas") return room.fetch(new Request(url.origin + "/ideas"));
     if (url.pathname === "/api/push/sub" && request.method === "POST") return room.fetch(new Request(url.origin + "/sub", { method: "POST", body: await request.text() }));
