@@ -16,7 +16,6 @@ Everything you implement must be as correct as possible in every way: real posit
 ## content (world data, on the hour)
 
 ## species (species and inventions)
-- 2026-11-27: New species pop in at full numbers on their first-appearance date (for example the 'Tyrannosaurus rex appears' event at 68 Ma). Real species appear rare and local first (T. rex: earliest fossils in Laramidia, descended from earlier tyrannosaurs) and spread; ramp abundance in over the first few hundred thousand years from the origin area, and fade out the same way at extinction except for sudden events like Chicxulub. Keep event titles unchanged (card IDs depend on them). (Devin)
 - 2026-11-27: 10 insect groups in public/species.json (i_*) have no fossil-site lists; they are worldwide ('all'), so they need none unless the data checker should skip them. (species run)
 - 2026-11-27: Devin asked for the full roster of life ~70 million years ago in the right places: more Maastrichtian dinosaurs, mammals, insects and plants per region from the Paleobiology Database (72-66 Ma occurrences), each placed only where its fossils are. Also: 'Cinnamon tree (Cinnamomum)' shows in the Cretaceous from old leaf identifications; consider labelling pre-66 Ma occurrences as a laurel-family (Lauraceae) tree. (viewer report)
 

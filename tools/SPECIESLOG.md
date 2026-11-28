@@ -1,6 +1,14 @@
 # Species and inventions log
 
-Newest first. Runs alternate: A = species run, B = inventions and things-made run.
+Newest first. Runs rotate A → B → C: A = dataset import, B = species run, C = history and inventions run. (Older entries below used the earlier labels: their "Run A" is today's B, their "Run B" is today's C.)
+
+## 2026-11-27 · Run C (inventions and things people made)
+- Added 99 entries to public/inventions.json (now 233): 82 new events/cards and 17 linked to milestones already in the timeline (telescope, barometer, Micrographia cells, smallpox vaccine, periodic table, Suez and Panama canals, Koch, radio, radioactivity, Haber–Bosch, penicillin, DNA, polio vaccine, first heart transplant, IVF, Dolly), which now get place, fact and source.
+  - Gaps filled first: Africa (Lebombo and Ishango bones, Aksum coins, Lalibela, al-Qarawiyyin, Roda Nilometer, Great Zimbabwe, Djinguereber, Barnard's transplant, M-Pesa), South Asia (Mehrgarh dentistry, Great Bath, Iron Pillar, Aryabhatiya, Gwalior zero, Rani ki vav, Parakrama Samudra, Jantar Mantar, Mysore rockets, Bombay–Thane railway), Islamic world (Baghdad paper, al-Khwarizmi, Banu Musa, al-Zahrawi, Ibn al-Haytham, Maragheh, Ulugh Beg), the Americas (Guilá Naquitz squash, Huaca Prieta indigo, Watson Brake, Caral, Olmec heads, Chiapa de Corzo Long Count, Syntex norethisterone), East Asia (Jiahu, Erlitou, Sanxingdui, Zhaozhou Bridge, Hōryū-ji, Wujing Zongyao, Jikji, instant noodles, Walkman), then European and American firsts (Sweet Track, Ljubljana wheel, Nebra disc, Eupalinos, Salisbury clock, Mercator, Newton, Leeuwenhoek, Harrison H4, Faraday's motor, Erie Canal, Braille, daguerreotype ... Z3, Colossus, RAMAC, Telstar, ATM, CT, email, cochlear implant, IBM PC, Linux).
+- Dropped: Canon of Medicine (place of completion not certain).
+- Handoff (species): new species now ramp in rare and local (rampF/rampOK in deepFauna): over their first ~300,000 years only a growing share of the zones near their fossils get them, at 1 animal; they fade the same way at the end, except at the K-Pg impact and for species that live on past the deep-time list.
+- Viewer ideas: humanitylivewatch.com/api/ideas could not be reached from the update machine this run.
+- Next run: A (dataset import).
 
 ## 2026-11-27 · Run A (species, second)
 - Added 64 animals and 27 fossil plants (species.json now 989 entries in "sp", 60 plants), all with Paleobiology Database occurrence ranges and fossil sites.
