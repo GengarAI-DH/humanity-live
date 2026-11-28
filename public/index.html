@@ -502,6 +502,22 @@ const scene=new THREE.Scene();scene.background=new THREE.Color(0x03050a);if(wind
 const camera=new THREE.PerspectiveCamera(55,1,.01,4000);
 const sun=new THREE.DirectionalLight(0xfff1dc,1.15);scene.add(sun);scene.add(sun.target);
 const amb=new THREE.AmbientLight(0x9aaad0,.46);scene.add(amb);const AMB_NIGHT=new THREE.Color(0x6a7fc0);
+// Sunlight never reaches things on the night side of the planet: trees, animals and buildings near the surface lose direct sun
+// as their spot passes the terminator (no shadow maps needed; costs a few vertex ops).
+THREE.ShaderChunk.lights_lambert_vertex+=`
+#if NUM_DIR_LIGHTS > 0
+{vec4 hlW=vec4(transformed,1.0);
+#ifdef USE_INSTANCING
+hlW=instanceMatrix*hlW;
+#endif
+hlW=modelMatrix*hlW;
+if(length(hlW.xyz)<115.0){float hlD=smoothstep(-0.10,0.08,dot(normalize(mat3(viewMatrix)*hlW.xyz),directionalLights[0].direction));vLightFront*=hlD;
+#ifdef DOUBLE_SIDED
+vLightBack*=hlD;
+#endif
+}}
+#endif
+`;
 let globeTex,specTex,globeGeo,globe,DIRS;
 function detailTex(){const S=256,d=new Uint8Array(S*S*4),oct=(f,ch)=>{const g=new Float32Array(f*f);for(let i=0;i<f*f;i++)g[i]=rnd();return(x,y)=>{const X=x/S*f,Y=y/S*f,i0=Math.floor(X),j0=Math.floor(Y),fx=X-i0,fy=Y-j0,a=g[(j0%f)*f+i0%f],b=g[(j0%f)*f+(i0+1)%f],c=g[((j0+1)%f)*f+i0%f],e=g[((j0+1)%f)*f+(i0+1)%f],sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);return a+(b-a)*sx+(c-a)*sy+(a-b-c+e)*sx*sy}};
  const n1=oct(8),n2=oct(16),n3=oct(32),n4=oct(64),n5=oct(128);for(let y=0;y<S;y++)for(let x=0;x<S;x++){const p=(y*S+x)*4,v=n1(x,y)*.3+n2(x,y)*.25+n3(x,y)*.2+n4(x,y)*.15+n5(x,y)*.1;d[p]=v*255;d[p+1]=(n2(x+31,y+17)*.5+n4(x,y)*.3+n5(x+7,y)*.2)*255;d[p+2]=(n4(x+11,y+5)*.5+n5(x,y+3)*.5)*255;d[p+3]=255}
@@ -2645,7 +2661,7 @@ $('favs').onclick=e=>{const del=e.target.closest('[data-fdel]');if(del){e.stopPr
 let toastQ=[],toastOn=false;
 function toast(html,ms,k){toastQ.push([html,ms||5000,k]);if(toastQ.length>4)toastQ.splice(0,toastQ.length-4);if(!toastOn)nextToast()}
 let tGen=0,tipOn=false;
-function showT(html,ms,k){const el=$('toast');toastOn=true;el.innerHTML=html;el.onclick=typeof k==='function'?k:null;el.style.pointerEvents=typeof k==='function'?'auto':'';el.style.cursor=typeof k==='function'?'pointer':'';el.classList.add('on');const g=++tGen;setTimeout(()=>{if(g!==tGen)return;tipOn=false;el.classList.remove('on');setTimeout(()=>{if(g===tGen)nextToast()},380)},ms)}
+function showT(html,ms,k){const el=$('toast');toastOn=true;el.innerHTML=html;{const hb=$('hud').getBoundingClientRect().bottom;el.style.top=hb>0?Math.max(150,Math.round(hb+10))+'px':''}el.onclick=typeof k==='function'?k:null;el.style.pointerEvents=typeof k==='function'?'auto':'';el.style.cursor=typeof k==='function'?'pointer':'';el.classList.add('on');const g=++tGen;setTimeout(()=>{if(g!==tGen)return;tipOn=false;el.classList.remove('on');setTimeout(()=>{if(g===tGen)nextToast()},380)},ms)}
 function nextToast(){const t=toastQ.shift();const el=$('toast');tipOn=false;if(!t){el.classList.remove('on');toastOn=false;return}showT(t[0],t[1],t[2])}
 // a card from tapping something: replaces the current card in place (no queue, no flicker); tapping it again or tapping empty ground closes it
 function tapToast(html,ms,k){if(tipOn&&$('toast').innerHTML===html)return;tipOn=true;showT(html,Math.max(ms||5000,7000),k)}
