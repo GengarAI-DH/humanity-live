@@ -40,6 +40,7 @@ SCHEMA = {
     'landforms.json': [('lf', 0, 2, 3, 4, None, None)],
     'quakes.json': [('quakes', 0, 1, 2, 3, None, None), ('volc', 0, 1, 2, 3, None, None)],
     'storms.json': [('st', 0, 2, 3, 4, None, None)],
+    'sky.json': [('sky', 0, 2, 3, 4, None, None)],
     'wonders.json': [('won', 1, 0, 6, 7, 'land', None)],
     'cities.json': [(None, None, 0, 1, 2, 'land', None)],
     'events.json': [(None, 0, 1, None, None, None, None)],

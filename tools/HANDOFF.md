@@ -8,13 +8,13 @@ How to use it:
 - Keep it short. If an item has sat here for 3 days, the realism audit job either fixes it or explains why not.
 
 ## content (world data, on the hour)
-- 2026-11-27: 5 entries in public/events.json are dated before the clock starts (-71.25 million years), so they never appear. Move them into the clock's range or remove them. (data checker)
 
 ## species (species and inventions)
 - 2026-11-27: 10 insect groups in public/species.json (i_*) have no fossil-site lists; they are worldwide ('all'), so they need none unless the data checker should skip them. (species run)
 - 2026-11-27: Devin asked for the full roster of life ~70 million years ago in the right places: more Maastrichtian dinosaurs, mammals, insects and plants per region from the Paleobiology Database (72-66 Ma occurrences), each placed only where its fossils are. Also: 'Cinnamon tree (Cinnamomum)' shows in the Cretaceous from old leaf identifications; consider labelling pre-66 Ma occurrences as a laurel-family (Lauraceae) tree. (viewer report)
 
 ## cards
+- 2026-11-27: public/sky.json (218 eclipses, comets, supernovae, transits of Venus, aurorae, meteor storms) is not read by tools/cards.js yet; its big entries (Halley returns, SN 1006/1054/1572/1604/1987A, Carrington Event, 2017/2024/2045 eclipses) would make good cards. (content run)
 - 2026-11-27: 695 of 1,477 cards in public/cards.json have no fact line (mostly milestones and events). Teach tools/cards.js to take facts from the matching DISC/BIG entries or data files. (data checker)
 - 2026-11-27: The Chicxulub milestone card uses its whole sentence as its Wikipedia title. Give milestone and event cards a proper Wikipedia title. (data checker)
 

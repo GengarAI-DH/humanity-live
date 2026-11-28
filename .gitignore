@@ -29,3 +29,4 @@ tools/__pycache__/
 tools/migrations.json
 tools/regions.json
 .dev.vars
+tools/sky.json
