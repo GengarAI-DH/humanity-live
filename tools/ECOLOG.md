@@ -2,6 +2,15 @@
 
 How to add interactions: see the "about" field in public/interactions.json for kinds. One real source per rule, keys must exist in the page (SP in tools/tpl.html, wildAt0/EXTRA, ANI, public/species.json). Note: 'seal' (sea) is defined but never spawned, so rules targeting it do nothing; use 'sealland'.
 
+## Nov 28, 2026 (fifth run)
+- Added 194 rules (1554 -> 1748). No new kinds. Tar pits (handoff) done in the engine instead of as rules.
+- Ice Age North America / La Brea: Smilodon fatalis on bison, horse, llama, ground sloth (Coltrain et al. 2004 isotopes; DeSantis et al. 2019 tooth wear), dire wolves on open-country grazers, wolves and sabre-tooths competing at carcasses (Van Valkenburgh & Hertel 1993 tooth breakage), Smilodon groups (Carbone et al. 2009), American lion, Arctodus scavenging and stealing (Figueirido 2010, Schubert 2010), teratorns, mammoth and mastodon herds and musth fights (El Adli et al. 2023), Homotherium and young mammoths (Friesenhahn Cave).
+- Maastrichtian: Nanuqsaurus in the Arctic (Fiorillo & Tykoski 2014), Avimimus flocks (Funston et al. 2016), island Europe (Balaur, Hatzegopteryx, Zalmoxes, Rhabdodon, Abditosaurus), Morocco (Arambourgiania, Chenanisaurus, Ajnabia, flocking pterosaurs), Hell Creek crocodylians on turtles and amphibians, small raptors on 13 small mammals and 9 lizards (inferred), Champsosaurus on salamanders, Didelphodon, South America, India and Madagascar.
+- Paleogene/Neogene: Corral Bluffs Ectoconus, Notharctus troops, White River Hyaenodon and Hoplophoneus on oreodonts, Agate entelodonts and Moropus, Palaeocastor burrows, Fayum primates and hyraxes, Antarctic penguins and litopterns, Dinofelis and Theropithecus (Brain 1981), Ekorus, Linxia, Anancus herds, desmostylians, dwarf elephants and pygmy mammoths.
+- Modern: Yellowstone wolves and grizzlies on elk, cheetahs, hyenas, tigers (Karanth & Sunquist 1995), jaguars on capybara and caiman (Cavalcanti & Gese 2010), dingoes, polar bears and arctic foxes.
+- Skipped: hunts by non-predators (madtsoiid snakes are plant-eater flagged), sea prey for Hesperornis (air-habitat).
+- Gaps: about 200 Maastrichtian sea fish still have no rule; Asian Maastrichtian lizards; guards-young kind.
+
 ## Nov 27, 2026 (fourth run)
 - Added 394 rules (1160 -> 1554). No new kinds (the engine already covers what these need). Handoff items for this job (herd home ranges, tar pits) are engine work too big for the handoff slot and stay open.
 - Modern (most seen): peafowl (leopard and tiger prey, alarm calls, displays), alpacas (pumas; alpacas guarding flocks from foxes and dogs), camels rutting, tapirs, wild boar and pigs, orangutans, red and giant pandas, platypus, kiwi (cats, dogs; territorial kicks), flamingo marches, saiga, orcas on blue whales (Totterdell et al. 2022), seals, sloths and harpy eagles, macaques, gorillas and leopards (Fay et al. 1995), chimp border patrols, lemurs and fossas, okapi, Mara River crossings (Subalusky et al. 2017), storks following locust swarms, rut fights for zebra, giraffe, hippo, rhino, buffalo, moose, elk, caribou, walrus, ibex, chamois, yak, Przewalski's horse (and wolves taking foals, Van Duyne et al. 2009).
