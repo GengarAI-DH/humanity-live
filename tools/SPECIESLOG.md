@@ -2,6 +2,16 @@
 
 Newest first. Runs rotate A → B → C: A = dataset import, B = species run, C = history and inventions run. (Older entries below used the earlier labels: their "Run A" is today's B, their "Run B" is today's C.)
 
+## 2026-11-28 · Run A (dataset import: NOAA HURDAT2 real hurricane tracks)
+- Imported public/hurricanes.json: 1,590 real hurricanes (987 Atlantic 1851-2025, 569 Northeast Pacific and 34 Central Pacific 1949-2025; every storm in HURDAT2 that reached 64 kt, out of 3,250 storms) with 56,617 best-track points (6-hourly position and wind), peak wind, lowest pressure and landfall count. Loaded lazily, only once the world passes 1850.
+  - While a real storm was active on the world's date it now appears on its real track with its real strength through its life (interpolated between best-track points), with its real name ("Unnamed hurricane" before names); tapping it shows its NHC id, dates, peak winds, lowest pressure and landfalls. The made-up storms stay off the Atlantic (from 1851) and the East Pacific (from 1949) until 2026, and still fill the other basins and the future.
+  - Cloud size and the storm-surge line remain estimates (HURDAT2 has no size before 2004); the info card says so.
+  - Smoke: new 2005 case checks Katrina (AL122005: 150 kt, 902 hPa) lands near 29.5N 89.6W on 29 Aug 2005 12 UTC, spawns on its track, and its card rows.
+- Tried first: Smithsonian GVP eruption exports (volcano.si.edu search_eruption_excel) return 403 to the import server; webservices.volcano.si.edu (GVP WFS) is not on IMPORT_HOSTS.
+- Handoff: Oak (Quercus) already starts at 56 Ma in the plant list; no change needed for the plants side.
+- Viewer ideas: humanitylivewatch.com/api/ideas returned nothing to this machine.
+- Next run: B (species).
+
 ## 2026-11-28 · Run C (inventions and things people made, third batch)
 - Added 118 entries to public/inventions.json (now 351): 102 new events/cards and 16 linked to milestones already in the timeline (seed drill, mercury thermometer, pasteurisation, Bologna, Sistan windmills, Vostok 1, human genome, CRISPR, black hole image, mRNA vaccines, TCP/IP, personal computers, Pharos, Roman concrete, Broad Street pump, Copernicus), which now get place, fact and source.
   - Africa: Nok terracottas, Mapungubwe golden rhino, Husuni Kubwa, Aswan High Dam, MeerKAT, Grand Ethiopian Renaissance Dam.

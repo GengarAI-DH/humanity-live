@@ -43,6 +43,7 @@ SCHEMA = {
     'sky.json': [('sky', 0, 2, 3, 4, None, None)],
     'heritage.json': [('wh', 0, 1, 3, 4, None, None)],
     'wrecks.json': [('w', 0, 1, 2, 3, None, None)],
+    'hurricanes.json': [('h', 2, 0, None, None, None, None)],
     'skyline.json': [('tb', 0, 1, 2, 3, 'land', None)],
     'wonders.json': [('won', 1, 0, 6, 7, 'land', None)],
     'inventions.json': [('inv', 0, 1, 2, 3, None, None)],
