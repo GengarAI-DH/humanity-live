@@ -407,8 +407,8 @@ function applyClimate(Y,force){
  const paleo=Y<-3e6,warm=clamp((Y-2000)/100,0,1);let sea=0,ice=0,g=0;
  if(paleo){const sig='p'+Math.floor(Y/4e5);if(!force&&CLIM.sig===sig)return false;CLIM={sig,sea:0,ice:0,g:0};paleoMap(Y)}
  else{if(Y<-70000){const ph=Math.sin(2*Math.PI*(Y+20000)/100000);ice=clamp(.45+.5*ph,0,1)*clamp((Y+3e6)/4e5,0,1);sea=ice*.1}else{sea=pw(SEA,Y);ice=pw(ICEF,Y);g=pw(GRN,Y)}
-  if(!force&&!CLIM.sig&&Math.abs(sea-CLIM.sea)<.004&&Math.abs(ice-CLIM.ice)<.04&&Math.abs(g-CLIM.g)<.08&&Math.abs(warm-(CLIM.w||0))<.05)return false;
-  CLIM={sea,ice,g,w:warm};EC.set(E0);bfs(k=>!!LAND[k],DIST);
+  const ls=lakeSig(Y);if(!force&&!CLIM.sig&&Math.abs(sea-CLIM.sea)<.004&&Math.abs(ice-CLIM.ice)<.04&&Math.abs(g-CLIM.g)<.08&&Math.abs(warm-(CLIM.w||0))<.05&&ls===CLIM.ls)return false;
+  CLIM={sea,ice,g,w:warm,ls};EC.set(E0);bfs(k=>!!LAND[k],DIST);
   for(let k=0;k<N;k++){const j=(k/GW)|0,lat=latOf(j),E=E0[k],land=E>-sea;
    const c=biomeCol(k,lat,Math.max(E,0),ice,g,land);LC[k*3]=c[0];LC[k*3+1]=c[1];LC[k*3+2]=c[2];
    const dd=clamp(DIST[k]/4,0,1),dm=land?0:Math.max(0,-TOPOM[k]-sea*455);SDP[k]=land?0:Math.min(dm,11000)*KMU/1000;let o=dm>0?oceanCol(dm):[lerp(70,14,dd),lerp(146,44,dd),lerp(168,86,dd)];
@@ -443,13 +443,21 @@ function applyClimate(Y,force){
  tctx.putImageData(img,0,0);sctx.putImageData(simg,0,0);
  if(!paleo){tctx.strokeStyle='rgba(58,112,150,.95)';tctx.lineCap=tctx.lineJoin='round';
   {const gk=clamp((simY+5.5e6)/(3.5e6),0,1);if(gk>0&&simY>-6e6){const GC=[[36.87,-111.6],[36.6,-111.85],[36.25,-111.95],[36.1,-112.1],[36.2,-112.6],[36.3,-113.1],[36.05,-113.8]];tctx.strokeStyle=`rgba(120,52,30,${.4+.5*gk})`;tctx.lineWidth=1+gk*3.5;tctx.beginPath();GC.forEach((p,i)=>{const X=(p[1]+180)/360*TW,Yp=(90-p[0])/180*TH;i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp)});tctx.stroke();tctx.strokeStyle='rgba(58,112,150,.95)'}}
-  if(WATER){const P=(c)=>[(c[0]+180)/360*TW,(90-c[1])/180*TH];tctx.fillStyle='rgb(52,104,146)';for(const l of WATER.l){if(l[0]>8)continue;tctx.beginPath();let px=null;l[2].forEach((c,i)=>{const[X,Yp]=P(c);if(i&&Math.abs(X-px)>TW/2){tctx.moveTo(X,Yp)}else i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp);px=X});tctx.closePath();tctx.fill()}
+  if(WATER){const P=(c)=>[(c[0]+180)/360*TW,(90-c[1])/180*TH];tctx.fillStyle='rgb(52,104,146)';for(const h of WATER.h||[]){const a=lakeH(h,Y);if(a<=0)continue;tctx.globalAlpha=a;tctx.beginPath();h[3].forEach((c,i)=>{const[X,Yp]=P(c);i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp)});tctx.closePath();tctx.fill()}
+   for(const l of WATER.l){const a=l[0]>8?0:lakeA(l[1],Y);if(a<=0||lakeIce(l[2]))continue;tctx.globalAlpha=a;tctx.beginPath();let px=null;l[2].forEach((c,i)=>{const[X,Yp]=P(c);if(i&&Math.abs(X-px)>TW/2){tctx.moveTo(X,Yp)}else i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp);px=X});tctx.closePath();tctx.fill()}tctx.globalAlpha=1;
    for(const r of WATER.r){tctx.strokeStyle='rgba(74,140,196,.95)';tctx.lineWidth=Math.max(.8,2.6-r[0]*.24);tctx.beginPath();let px=null;r[1].forEach((c,i)=>{const[X,Yp]=P(c);if(!i||Math.abs(X-px)>TW/2)tctx.moveTo(X,Yp);else tctx.lineTo(X,Yp);px=X});tctx.stroke()}}
   else for(const r of RIVERS){tctx.lineWidth=1.4;tctx.beginPath();r.forEach((p,i)=>{const X=(p[1]+180)/360*TW,Yp=(90-p[0])/180*TH;i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp)});tctx.stroke()}}
  if(globeTex){globeTex.needsUpdate=true;specTex.needsUpdate=true}
  if(globeGeo)updGlobeHeights();
  placeZones(Y);
  return true}
+// ---- lakes on their real dates: reservoirs fill from the year their dam closed (to full), Natural Earth historic outlines
+// (Aral Sea, Lake Chad, Lake Texcoco, Lop Nur; public domain) shrink to today's lakes, lakes under ice-age ice sheets are hidden ----
+const RESV={'Lake Mead':[1935,1938],'Lake Powell':[1963,1980],'Lake Nasser':[1964,1976],'Lake Volta':[1964,1967],'Lake Kariba':[1958,1963],'Itaipú Reservoir':[1982,1983],'Rybinsk Reservoir':[1941,1947],'Samara Reservoir':[1955,1957],'Kremenchuk Reservoir':[1959,1961],'Kakhovka Reservoir':[1955,1958,2023.43],'Bratsk Reservoir':[1961,1967],'Vilyuy Reservoir':[1967,1972],'Smallwood Reservoir':[1970,1974],'Rés. de La Grande 2':[1978,1979],'Rés. de La Grande 3':[1981,1982],'Réservoir de Caniapiscau':[1981,1985],'Réservoir Gouin':[1917,1918],'Réservoir Baskatong':[1927,1928],'Cabonga Reservoir':[1928,1929],'Réservoir Pipmuacan':[1953,1956],'Kainji Reservoir':[1968,1969],'Represa de Sobradinho':[1977,1979],'Represa de Tucuruí':[1984,1985],'Represa Três Marias':[1960,1962],'Lago Gatun':[1912,1914],'Van Blommestein Meer':[1964,1967],'Nam Ngum Reservoir':[1971,1972],'Toktogul Res.':[1974,1978],'Shardara Bögeni':[1965,1968],'Lake Argyle':[1971,1974],'Williston Lake':[1968,1972],'Kinbasket Lake':[1973,1976],'Ft. Peck Lake':[1937,1940],'Fort Peck Lake':[1937,1940],'Lake Sakakawea':[1953,1956],'Lake Oahe':[1958,1962],'Lake Francis Case':[1952,1955],'Amistad Reservoir':[1968,1969],'Falcon Lake':[1953,1954],'Kentucky Lake':[1944,1945],'J. Strom Thurmond Lake':[1951,1954],'Lake Havasu':[1938,1939],'Shasta Lake':[1944,1948],'Millerton Lake':[1944,1945],'Wheeler Lake':[1936,1937],'Lake Tharthar':[1956,1958],'Salton Sea':[1905,1907]};
+function lakeA(n,Y){const r=RESV[n];if(!r)return 1;if(r[2]&&Y>=r[2])return clamp(1-(Y-r[2])*12,0,1);return clamp((Y-r[0])/(r[1]-r[0]),0,1)}
+function lakeH(h,Y){return clamp((h[2]-Y)/(h[2]-h[1]),0,1)}
+function lakeIce(c){const ic=CLIM.ice||0;if(ic<=0)return false;const p=c[c.length>>1],e=Math.pow(ic,.6);return ICE.some(b=>ell(p[1],p[0],b)<e)}
+function lakeSig(Y){if(Y<1590||Y>2030)return 0;let s=0;for(const n in RESV)s=s*7+Math.round(lakeA(n,Y)*4)|0;if(WATER&&WATER.h)for(const h of WATER.h)s=s*7+Math.round(lakeH(h,Y)*8)|0;return s}
 function hAt0(lat,lon){let gx=(lon+180)*2-.5,gy=(90-lat)*2-.5;const i0f=Math.floor(gx),fx=gx-i0f,j0=clamp(Math.floor(gy),0,GH-1),j1=Math.min(GH-1,j0+1),fy=clamp(gy-j0,0,1),i0=(i0f+GW)%GW,i1=(i0+1)%GW;
  return HG[j0*GW+i0]*(1-fx)*(1-fy)+HG[j0*GW+i1]*fx*(1-fy)+HG[j1*GW+i0]*(1-fx)*fy+HG[j1*GW+i1]*fx*fy}
 function hAt(lat,lon){const b=hAt0(lat,lon);return HRP?b+hrW(lat,lon):b}
