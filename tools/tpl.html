@@ -450,9 +450,48 @@ function applyClimate(Y,force){
  if(globeGeo)updGlobeHeights();
  placeZones(Y);
  return true}
-function hAt(lat,lon){let gx=(lon+180)*2-.5,gy=(90-lat)*2-.5;const i0f=Math.floor(gx),fx=gx-i0f,j0=clamp(Math.floor(gy),0,GH-1),j1=Math.min(GH-1,j0+1),fy=clamp(gy-j0,0,1),i0=(i0f+GW)%GW,i1=(i0+1)%GW;
+function hAt0(lat,lon){let gx=(lon+180)*2-.5,gy=(90-lat)*2-.5;const i0f=Math.floor(gx),fx=gx-i0f,j0=clamp(Math.floor(gy),0,GH-1),j1=Math.min(GH-1,j0+1),fy=clamp(gy-j0,0,1),i0=(i0f+GW)%GW,i1=(i0+1)%GW;
  return HG[j0*GW+i0]*(1-fx)*(1-fy)+HG[j0*GW+i1]*fx*(1-fy)+HG[j1*GW+i0]*(1-fx)*fy+HG[j1*GW+i1]*fx*fy}
+function hAt(lat,lon){const b=hAt0(lat,lon);return HRP?b+hrW(lat,lon):b}
 const hDir=(x,y,z)=>{const p=ll(x,y,z);return hAt(p[0],p[1])};
+// ---- sharper mountains up close: 4 arc-minute NOAA ETOPO1 tiles (public domain; Amante & Eakins 2009) for the big mountain regions,
+// fetched only when the camera is low over one, shown on a fine ground patch that blends into the 0.5-degree globe at its edges ----
+const HRT=[['himalaya',26,40,68,98,35],['alps',43,49,4,17,20],['andes_n',-18,8,-82,-62,30],['andes_s',-45,-18,-76,-62,30],['eafrica',-12,15,28,44,25],['rockies',32,50,-118,-104,20]],HRC={},HRN=10,HRS=12,HRST=180/256;
+let HRP=null,hrMesh=null,hrT=0;
+function hrTile(lat,lon){for(const t of HRT)if(lat>t[1]+1.5&&lat<t[2]-1.5&&lon>t[3]+1.5&&lon<t[4]-1.5)return t;return null}
+function hrLoad(t){if(HRC[t[0]]!==undefined)return;HRC[t[0]]=null;fetch('topo/'+t[0]+'.bin').then(r=>r.ok?r.arrayBuffer():null).then(b=>{if(!b)return;const W=(t[4]-t[3])*15+1,H=(t[2]-t[1])*15+1;if(b.byteLength!==W*H)return;HRC[t[0]]={t,W,H,z:new Uint8Array(b)}}).catch(()=>{})}
+function hrM(c,lat,lon){const t=c.t,x=(lon-t[3])*15,y=(lat-t[1])*15,i=Math.min(c.W-2,Math.max(0,Math.floor(x))),j=Math.min(c.H-2,Math.max(0,Math.floor(y))),fx=clamp(x-i,0,1),fy=clamp(y-j,0,1),z=c.z,W=c.W,k=j*W+i;
+ return((z[k]*(1-fx)+z[k+1]*fx)*(1-fy)+(z[k+W]*(1-fx)+z[k+W+1]*fx)*fy)*t[5]}
+function topoAt(lat,lon){let gx=(lon+180)*2-.5,gy=(90-lat)*2-.5;const i0f=Math.floor(gx),fx=gx-i0f,j0=clamp(Math.floor(gy),0,GH-1),j1=Math.min(GH-1,j0+1),fy=clamp(gy-j0,0,1),i0=(i0f+GW)%GW,i1=(i0+1)%GW;
+ return Math.max(0,TOPOM[j0*GW+i0])*(1-fx)*(1-fy)+Math.max(0,TOPOM[j0*GW+i1])*fx*(1-fy)+Math.max(0,TOPOM[j1*GW+i0])*(1-fx)*fy+Math.max(0,TOPOM[j1*GW+i1])*fx*fy}
+// extra height (globe units) the fine data adds at a point: fades out at the patch edge, the tile edge, the coast and around towns (they stand on the flat site plane)
+function hrD(lat,lon,b){const P=HRP,c=P.c,t=c.t,sm=v=>{v=clamp(v,0,1);return v*v*(3-2*v)};
+ const w=sm(Math.min(lat-P.s,P.n-lat,lon-P.w,P.e-lon)/(HRST*1.6))*sm(Math.min(lat-t[1],t[2]-lat,lon-t[3],t[4]-lon)/.5)*sm((b-.035)/.03);if(w<=0)return 0;
+ let d=(hrM(c,lat,lon)-topoAt(lat,lon))*KMU/1000;for(const s of P.st){const q=Math.hypot(lat-s[0],(lon-s[1])*s[2]);if(q<.24)d=lerp(s[3],d,sm((q-.08)/.16))}return w*d}
+function hrW(lat,lon){const P=HRP;if(lat<=P.s||lat>=P.n||lon<=P.w||lon>=P.e)return 0;return hrD(lat,lon,hAt0(lat,lon))}
+function hrGlobeR(ix,iy){const p=globeGeo.attributes.position.array,k=(iy*513+ix)*3,o=HRP&&HRP.sv&&HRP.sv.get(iy*513+ix);return o!==undefined?o:Math.hypot(p[k],p[k+1],p[k+2])}
+function hrDrop(){if(!HRP)return;const p=globeGeo.attributes.position.array;for(const[k,r]of HRP.sv){const l=Math.hypot(p[k*3],p[k*3+1],p[k*3+2])||1;p[k*3]*=r/l;p[k*3+1]*=r/l;p[k*3+2]*=r/l}
+ globeGeo.attributes.position.needsUpdate=true;const P=HRP;HRP=null;if(hrMesh)hrMesh.visible=false;hrRefit(P)}
+function hrRefit(P){for(const z of[...S,...WZ])if(z.U&&z.lat>P.s-.5&&z.lat<P.n+.5&&z.lon>P.w-.5&&z.lon<P.e+.5){if(z.homes){frameSite(z);if(z.built)z.dirty=true}else frameSite(z)}treesDirty=true}
+function hrBuild(c,ci,cj){if(HRP)hrDrop();
+ const P={c,ci,cj,w:-180+ci*HRST,e:-180+(ci+HRN)*HRST,n:90-cj*HRST,s:90-(cj+HRN)*HRST,sv:new Map(),st:[]};
+ for(const s of S)if((s.built||s.tier>=0)&&s.lat>P.s-.5&&s.lat<P.n+.5&&s.lon>P.w-.5&&s.lon<P.e+.5)P.st.push([s.lat,s.lon,Math.cos(s.lat*DEG),0]);
+ const M=HRN*HRS+1,pos=new Float32Array(M*M*3),uv=new Float32Array(M*M*2),gp=globeGeo.attributes.position.array;
+ HRP=P;for(const s of P.st)s[3]=0;for(const s of P.st){const b=hAt0(s[0],s[1]);const st=P.st;P.st=[];s[3]=hrD(s[0],s[1],b);P.st=st}
+ for(let b=0;b<M;b++)for(let a=0;a<M;a++){const gi=a/HRS,gj=b/HRS,i0=Math.min(HRN-1,Math.floor(gi)),j0=Math.min(HRN-1,Math.floor(gj)),fx=gi-i0,fy=gj-j0,
+  r00=hrGlobeR(ci+i0,cj+j0),r10=hrGlobeR(ci+i0+1,cj+j0),r01=hrGlobeR(ci+i0,cj+j0+1),r11=hrGlobeR(ci+i0+1,cj+j0+1),lon=P.w+gi*HRST,lat=P.n-gj*HRST;
+  let r=(r00*(1-fx)+r10*fx)*(1-fy)+(r01*(1-fx)+r11*fx)*fy;if(a&&b&&a<M-1&&b<M-1&&r>R)r+=hrD(lat,lon,hAt0(lat,lon));const v=v3(lat,lon,r),k=b*M+a;
+  pos[k*3]=v.x;pos[k*3+1]=v.y;pos[k*3+2]=v.z;uv[k*2]=(lon+180)/360;uv[k*2+1]=(lat+90)/180}
+ // sink the coarse globe under the patch so the finer ground shows (edges stay shared, so there is no seam)
+ for(let j=cj+1;j<cj+HRN;j++)for(let i=ci+1;i<ci+HRN;i++){const k=j*513+i,l=Math.hypot(gp[k*3],gp[k*3+1],gp[k*3+2]);P.sv.set(k,l);const f=(l-1.2)/l;gp[k*3]*=f;gp[k*3+1]*=f;gp[k*3+2]*=f}
+ globeGeo.attributes.position.needsUpdate=true;
+ if(!hrMesh){const g=new THREE.BufferGeometry(),idx=[];for(let b=0;b<M-1;b++)for(let a=0;a<M-1;a++){const k=b*M+a;idx.push(k,k+M,k+1,k+1,k+M,k+M+1)}g.setIndex(idx);
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));hrMesh=new THREE.Mesh(g,globe.material);hrMesh.frustumCulled=false;scene.add(hrMesh)}
+ else{hrMesh.geometry.attributes.position.array.set(pos);hrMesh.geometry.attributes.uv.array.set(uv);hrMesh.geometry.attributes.position.needsUpdate=hrMesh.geometry.attributes.uv.needsUpdate=true}
+ hrMesh.geometry.computeVertexNormals();hrMesh.geometry.computeBoundingSphere();hrMesh.visible=true;hrRefit(P)}
+function hrTick(dt){if(!globeGeo||(hrT-=dt)>0)return;hrT=.5;const c=cam.t,q=ll(c.x,c.y,c.z),t=simY>-3e6&&cam.alt<14?hrTile(q[0],q[1]):null;
+ if(!t){if(HRP)hrDrop();return}const C=HRC[t[0]];if(!C){hrLoad(t);return}
+ const ci=Math.round((q[1]+180)/HRST-HRN/2),cj=Math.round((90-q[0])/HRST-HRN/2);if(HRP&&HRP.c===C&&Math.abs(ci-HRP.ci)<=2&&Math.abs(cj-HRP.cj)<=2)return;hrBuild(C,ci,cj)}
 const biomeAt=(lat,lon)=>BI[clamp(Math.floor((90-lat)*2),0,GH-1)*GW+((Math.floor((lon+180)*2))%GW+GW)%GW];
 
 // ================== three setup ==================
@@ -499,8 +538,8 @@ function makeGlobe(){
  sg.setAttribute('position',new THREE.BufferAttribute(sp,3));scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:1.6,sizeAttenuation:false})));
 }
 let clouds;
-function updGlobeHeights(){const p=globeGeo.attributes.position.array;for(let i=0;i<p.length/3;i++){const x=DIRS[i*3],y=DIRS[i*3+1],z=DIRS[i*3+2];let r=R+hDir(x,y,z);if(SEAFLOOR&&r<R){const q=ll(x,y,z);r-=sdAt(q[0],q[1])}p[i*3]=x*r;p[i*3+1]=y*r;p[i*3+2]=z*r}globeGeo.attributes.position.needsUpdate=true;globeGeo.computeVertexNormals();
- for(const s of S)if(s.built)s.dirty=true}
+function updGlobeHeights(){const p=globeGeo.attributes.position.array;for(let i=0;i<p.length/3;i++){const x=DIRS[i*3],y=DIRS[i*3+1],z=DIRS[i*3+2];const q=ll(x,y,z);let r=R+hAt0(q[0],q[1]);if(SEAFLOOR&&r<R){r-=sdAt(q[0],q[1])}p[i*3]=x*r;p[i*3+1]=y*r;p[i*3+2]=z*r}globeGeo.attributes.position.needsUpdate=true;globeGeo.computeVertexNormals();
+ for(const s of S)if(s.built)s.dirty=true;if(HRP){const P=HRP;HRP=null;hrBuild(P.c,P.ci,P.cj)}}
 
 // geometry library
 const BASE={};
@@ -2722,7 +2761,7 @@ function frame(T){requestAnimationFrame(frame);const now=performance.now(),_t0=n
  herdT-=dt;if(herdT<=0){herdT=3;if(S.some(s=>s.built&&s.tier>=0&&herdFor(s,simY,s.tier).map(x=>x[0]).join()!==s.hkey))rebuildAnimals();if(WZ.some(z=>faunaFor(z,simY).map(x=>x.join(':')).join()!==z.key)){rebuildWild();rebuildPoints()}}
  nightT-=dt;if(nightT<=0){nightT=.25;updSun();nightCols()}
  boatN=0;updAgents(dt,now/1000);boatM.instanceMatrix.needsUpdate=true;boatM.instanceColor.needsUpdate=true;HUMN=0;updAnimals(dt,now/1000);updWild(dt,now/1000);updTransport(dt);
- camUpdate(dt);updDisasters(dt);updFX(dt);updSpectacle(dt);try{updLive(dt)}catch(e){}updWeather(dt);updSound(dt);updCaravans(dt);
+ camUpdate(dt);hrTick(dt);updDisasters(dt);updFX(dt);updSpectacle(dt);try{updLive(dt)}catch(e){}updWeather(dt);updSound(dt);updCaravans(dt);
  const sel=AM.get(selId);if(sel&&sel.vis&&sel.wx!==undefined){pin.visible=true;const s=Math.max(.008,cam.alt*.018);pin.scale.set(s*.6,s,s*.6);const u=new THREE.Vector3(sel.wx,sel.wy,sel.wz).normalize();pin.position.set(sel.wx,sel.wy,sel.wz).addScaledVector(u,.032+Math.abs(Math.sin(now/300))*.006);pin.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),u)}else pin.visible=false;
  hudT-=dt;if(hudT<=0){hudT=.25;updHud();updPlace()}try{updBigLabels()}catch(e){}
  if(QG.lvl===0||(QG.alt=!QG.alt)){updLabels();updGeo()}if(borderL){borderL.visible=simY>=1945&&cam.alt>3;borderL.material.opacity=clamp((cam.alt-3)/20,0,.35)}cityT-=dt;if(cityT<=0){cityT=.5;updCityLabels();cityCT-=.5;if(Math.floor(simY)!==Math.floor(cityT0)||cityCT<=0){cityCT=4;updCities();cityT0=simY}}tagT-=dt;if(tagT<=0){tagT=.12;updTags()}
