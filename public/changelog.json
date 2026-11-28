@@ -1,6 +1,18 @@
 [
 {
 "when": "Nov 27",
+"text": "Play as an animal: tap a wild animal and choose \"Play as this animal\" to walk, run, graze or hunt as it, with a hunger bar. Other animals react to you by the same researched rules, so predators may come for you."
+},
+{
+"when": "Nov 27",
+"text": "Animals now say what they actually eat: predators list the real prey and carcasses they fed on, with the research it comes from (for example T. rex: Edmontosaurus, Triceratops). Plant diets are being researched next."
+},
+{
+"when": "Nov 27",
+"text": "Cleaner map: zoomed out you see only continents and oceans; country names appear as you zoom in and never pile up; cities appear when you get close, like Google Earth."
+},
+{
+"when": "Nov 27",
 "text": "The Ice Age planet now uses real satellite colour and texture (NASA Blue Marble) wherever the land looked as it does today, from 3 million years ago on, fading as the ice sheets grow. Ice sheets, the dry land of Doggerland, Beringia and Sundaland, and the green Sahara keep their reconstructed colours, and there is no longer a jump in 4000 BC."
 },
 {

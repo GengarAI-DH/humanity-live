@@ -49,6 +49,10 @@ All of these need `python3 build.py` first (they load `tools/test.html`) and run
 - Every night (11:00 UTC, about 3 AM Pacific) the worker saves the world, chat, ideas, alerts and all cards to the BACKUPS KV namespace (gzip, last 30 days). POST /api/admin/backups {key} lists them; POST /api/admin/backup {key} makes one now; POST /api/admin/restore {key, day, confirm:"RESTORE <day>", tables:[...]} restores (it saves the current state first). The key is the ADMIN_KEY secret; never put it in the repo.
 - Never change table layouts in a way that breaks restoring older backups.
 
+## Play as an animal
+- Tapping a wild land animal offers "Play as this animal" (playAs). playSteer turns the joystick (relative to the camera) into the animal's next target before the normal AI moves it, so it walks with the same speeds, terrain and water rules, and other animals react to it by the same interaction rules. Attack and graze use the same odds as the AI. Hunger empties in about 5 minutes (faster when running).
+- What an animal eats (eatsOf) comes only from interactions.json hunts and scavenges rules, with their sources shown as Evidence.
+
 ## Annoyance check
 `python3 tools/annoy.py` (after build.py) counts automatic popups per minute at ground level in three eras and fails above 3 a minute. Run it before shipping anything that shows messages.
 
