@@ -1395,6 +1395,13 @@ const ROUTES=[['london','nyc'],['blombos','mumbai'],['lagos','saopaulo'],['tokyo
 // coast in under 16 h (NASM), 707 New York-Paris in 8 h 41 min with a stop (Britannica); the Boeing 247 flew 50% faster than the Ford Tri-Motor.
 function planeEra(Y){return Y<1933?{kmh:165,cm:3000}:Y<1946?{kmh:250,cm:3000}:Y<1958?{kmh:250,cm:7500}:{kmh:670,cm:10700}}
 function newFlight(a,b,pe,t){const ang=a.U.angleTo(b.U);return{a,b,t,ang,park:0,cm:pe.cm,dur:40+ang*60*670/pe.kmh,ga:Math.max(0,hDir(a.U.x,a.U.y,a.U.z)),gb:Math.max(0,hDir(b.U.x,b.U.y,b.U.z))}}
+// ocean ships by era: sail vs steam share, speed in knots, days in port (sources in tools/BEHAVIOR.md). Voyages run at SHK seconds per real hour, port stays at SHP.
+const SHK=1.2,SHP=.3;
+function shipSteamP(Y){return Y<1840?0:Y<1860?lerp(0,.155,(Y-1840)/20):Y<1870?lerp(.155,.24,(Y-1860)/10):Y<1880?lerp(.24,.47,(Y-1870)/10):Y<1910?lerp(.47,.8,(Y-1880)/30):Y<1930?lerp(.8,1,(Y-1910)/20):1}
+function shipKn(Y,sail){return sail?(Y<1818?4:5):Y<1950?9:Y<1968?lerp(9,22.5,(Y-1950)/18):Y<2008?22.5:18}
+function shipPortH(Y,sail){return sail?288:Math.max(22,lerp(288,22,clamp((Y-1850)/150,0,1)))}
+function shipName(s,Y){return s.sail?'Sailing ship':Y<1950?'Steamship':Y<2008?'Cargo ship':'Container ship'}
+function shipLeg(s){const A1=s.dir>0?s.a:s.b,B1=s.dir>0?s.b:s.a;s.sail=rnd()>=shipSteamP(simY);s.kn=shipKn(simY,s.sail)*(.85+rnd()*.3);const hrs=A1.U.angleTo(B1.U)*6371/(s.kn*1.852);s.dur=Math.max(30,hrs*SHK);s.days=hrs/24;s.ak=''}
 function nightCurfew(s,uh){if(s.lon===undefined)s.lon=ll(s.U.x,s.U.y,s.U.z)[1];const h=((uh+s.lon/15)%24+24)%24;return h>=23||h<6}
 const _pu=new THREE.Vector3(),_pu2=new THREE.Vector3();let _tbig=[],_tbT=0,_shT=0;
 function updTransport(dt){
@@ -1417,11 +1424,15 @@ function updTransport(dt){
   p.wx=u.x*alt;p.wy=u.y*alt;p.wz=u.z*alt;setInst(arr,n*16,p.wx,p.wy,p.wz,ux,uy,uz,fx,fy,fz,1.6);planeM.instanceColor.setXYZ(n,.95,.95,.97);n++}
  planeM.count=n;planeM.instanceMatrix.needsUpdate=true;planeM.instanceColor.needsUpdate=true;
  // ships
- _shT-=dt;if(simY>=1500){if(_shT<=0){_shT=1;for(const r of ROUTES){const a=SK[r[0]],b=SK[r[1]];if(!a.built||!b.built||a.tier<5||b.tier<5)continue;const id=r.join();if(!SHIPS.some(s=>s.id===id))SHIPS.push({id,a,b,t:rnd(),dir:1})}}}else SHIPS=[];
+ _shT-=dt;if(simY>=1500){if(_shT<=0){_shT=1;for(const r of ROUTES){const a=SK[r[0]],b=SK[r[1]];if(!a.built||!b.built||a.tier<5||b.tier<5)continue;const id=r.join();if(!SHIPS.some(s=>s.id===id)){const sh={id,a,b,t:rnd(),dir:1,park:0};shipLeg(sh);SHIPS.push(sh)}}}}else SHIPS=[];
  n=0;const sa=shipM.instanceMatrix.array;
- for(const s of SHIPS){if(!s.a.built||!s.b.built){continue}s.t+=dt/220*s.dir;if(s.t>1||s.t<0){s.dir*=-1;s.t=clamp(s.t,0,1)}const A1=s.dir>0?s.a:s.b,B1=s.dir>0?s.b:s.a,tt=s.dir>0?s.t:1-s.t;
+ for(const s of SHIPS){if(!s.a.built||!s.b.built){continue}if(!s.kn)shipLeg(s);
+  // at sea: slow near ports, full speed in open water; on arrival wait in port, then sail back (a new ship type may be chosen as steam replaces sail)
+  if(s.park>0){s.park-=dt;if(s.park<=0)shipLeg(s)}else{const e0=Math.min(s.t,1-s.t);s.t+=dt/s.dur*s.dir*(.35+.65*Math.min(1,e0/.02));if(s.t>1||s.t<0){s.dir*=-1;s.t=clamp(s.t,0,1);s.park=shipPortH(simY,s.sail)*SHP;s.ph=shipPortH(simY,s.sail)}}
+  const A1=s.dir>0?s.a:s.b,B1=s.dir>0?s.b:s.a,tt=s.dir>0?s.t:1-s.t;
+  {const dd=s.park>0?-1:Math.floor(tt*s.days);const k=dd+'|'+(A1.i||0);if(s.ak!==k){s.ak=k;const kn=Math.round(s.kn);s.act=s.park>0?`in port at ${nameAt(A1,simY)}, loading and unloading (about ${Math.max(1,Math.round(s.ph/24))} day${Math.round(s.ph/24)>1?'s':''})`:`${s.sail?'under sail':simY<1950?'steaming':simY<2008?'cruising':'slow steaming to save fuel'} at about ${kn} knots, ${nameAt(A1,simY)} to ${nameAt(B1,simY)}, day ${dd+1} of about ${Math.max(1,Math.round(s.days))}`}}
   const u=_pu.copy(A1.U).lerp(B1.U,tt).normalize(),u2=_pu2.copy(A1.U).lerp(B1.U,Math.min(1,tt+.005)).normalize(),f=u2.sub(u);f.addScaledVector(u,-f.dot(u)).normalize();const r_=R+Math.max(0,hDir(u.x,u.y,u.z))+.005;
-  s.wx=u.x*r_;s.wy=u.y*r_;s.wz=u.z*r_;setInst(sa,n*16,u.x*r_,u.y*r_,u.z*r_,u.x,u.y,u.z,f.x,f.y,f.z,1.4);_c.setHex(simY>1880?0x3a3f48:0x6b4a2e);shipM.instanceColor.setXYZ(n,_c.r,_c.g,_c.b);n++}
+  s.wx=u.x*r_;s.wy=u.y*r_;s.wz=u.z*r_;setInst(sa,n*16,u.x*r_,u.y*r_,u.z*r_,u.x,u.y,u.z,f.x,f.y,f.z,1.4);_c.setHex(s.sail?0x6b4a2e:0x3a3f48);shipM.instanceColor.setXYZ(n,_c.r,_c.g,_c.b);n++}
  LBOATS=[];const T=performance.now()/1000;
  for(const s of S){if(!s.built||s.cd===null||s.tier<0||!s.U||s.U.angleTo(cam.t)>.08)continue;const t=s.tier;
   for(let i=0;i<2;i++){const a=s.cd+Math.sin(T*.03+i*2+s.i)*.5,r=s.rad*1.65+.08+i*.06,x=Math.cos(a)*r,z=Math.sin(a)*r;if(gH(s,x,z)>=0)continue;
@@ -1803,7 +1814,9 @@ function tap(x,y){if(tipOn){closeTip();return}try{if(labelAt(x,y))return}catch(e
  if(best){selId=best.id;showPerson(best.id);if(cam.alt>2.5)flyTo(new THREE.Vector3(best.wx,best.wy,best.wz),.5);return}
  let ba=null;bd=34*34;for(const a of [...ANIMS,...WA]){if(a.wx===undefined)continue;_v.set(a.wx,a.wy,a.wz);if((a.wx-cp.x)*a.wx+(a.wy-cp.y)*a.wy+(a.wz-cp.z)*a.wz>0)continue;_v.project(camera);if(_v.z>1)continue;const sx=(_v.x+1)/2*innerWidth,sy=(1-_v.y)/2*innerHeight,d=(sx-x)**2+(sy-y)**2;if(d<bd){bd=d;ba=a}}
  if(!ba){let bp=null;bd=30*30;for(const p of PLANES){if(p.wx===undefined)continue;_v.set(p.wx,p.wy,p.wz);if((p.wx-cp.x)*p.wx+(p.wy-cp.y)*p.wy+(p.wz-cp.z)*p.wz>0)continue;_v.project(camera);if(_v.z>1)continue;const d=(((_v.x+1)/2*innerWidth)-x)**2+(((1-_v.y)/2*innerHeight)-y)**2;if(d<bd){bd=d;bp=p}}
-  if(bp){tapToast(`<b>${simY<1958?'Propeller airliner':'Jet airliner'}</b> · ${esc(bp.act||'flying')}<br>${esc(nameAt(bp.a,simY))} → ${esc(nameAt(bp.b,simY))}<br>${simY<1946?'Unpressurized cabin: airliners flew no higher than about 3,000 m':simY<1958?'Pressurized cabin: cruising up to about 7,500 m':'Jets cruise near 35,000 ft (about 10,700 m) and start down about 3 nautical miles out for every 1,000 ft'}`,5000);return}}
+  if(bp){tapToast(`<b>${simY<1958?'Propeller airliner':'Jet airliner'}</b> · ${esc(bp.act||'flying')}<br>${esc(nameAt(bp.a,simY))} → ${esc(nameAt(bp.b,simY))}<br>${simY<1946?'Unpressurized cabin: airliners flew no higher than about 3,000 m':simY<1958?'Pressurized cabin: cruising up to about 7,500 m':'Jets cruise near 35,000 ft (about 10,700 m) and start down about 3 nautical miles out for every 1,000 ft'}`,5000);return}
+  let bs=null;bd=30*30;for(const p of SHIPS){if(p.wx===undefined)continue;if((p.wx-cp.x)*p.wx+(p.wy-cp.y)*p.wy+(p.wz-cp.z)*p.wz>0)continue;_v.set(p.wx,p.wy,p.wz).project(camera);if(_v.z>1)continue;const d=(((_v.x+1)/2*innerWidth)-x)**2+(((1-_v.y)/2*innerHeight)-y)**2;if(d<bd){bd=d;bs=p}}
+  if(bs){tapToast(`<b>${shipName(bs,simY)}</b> · ${esc(bs.act||'at sea')}<br>${bs.sail?'Sailing ships averaged about 4 to 6 knots over a voyage and spent around 12 days in port':simY<1950?'Steamships averaged about 9 knots (17 km/h) and cut voyage times by more than half compared with sail':simY<2008?'Container ships cruised at 22 to 23 knots and turn around in port in about a day':'Since 2007 lines slow container ships to about 18 knots to save fuel; most spend about a day in port'}`,5000);return}}
  if(ba){const sp=ba.sp||spec(ba.type);try{if(!ba.dom)cardSpot(ba.type)}catch(e){}tapToast(`<b>${esc(sp.n)}</b>`+(ba.dom===1?' · domestic animal':ba.dom?'':' · wild')+(ba.act?' · '+ba.act:'')+(ba.zo&&ba.zo.N&&ba.zo.N[ba.type]!=null?` · about ${Math.round(ba.zo.N[ba.type]).toLocaleString('en-US')} in this area`:'')+`<br>${esc([dietOf(ba.type),sizeTxt(ba.type)].filter(Boolean).join(' · '))}`+(sp.fact?'<br>'+esc(sp.fact):'')+'<br><span class="sm">Tap for more</span>',5000,()=>{showWikiThing(sp.n,[['Diet',dietOf(ba.type)||'—'],['Size',sizeTxt(ba.type)||'—'],['Here',ba.dom===1?'domestic':'wild'],...(ba.zo&&ba.zo.N&&ba.zo.N[ba.type]!=null?[['Population nearby','about '+Math.round(ba.zo.N[ba.type]).toLocaleString('en-US')]]:[]),...(sp.fact?[['Fact',sp.fact]]:[]),...(fossilWhere(ba.type)?[['Fossils found at',fossilWhere(ba.type)]]:[]),...(extYear('sp:'+ba.type)!=null&&extYear('sp:'+ba.type)>simY?[['Goes extinct',fmtY(extYear('sp:'+ba.type))+' (when its fossils end)']]:[])],sp.sci||sp.n);{const yy=extYear('sp:'+ba.type);if(yy!=null&&yy>simY){const bt=document.createElement('button');bt.textContent=FOLX.some(f=>f.k==='sp:'+ba.type)?'🔔 Following':'🔔 Follow until extinct';bt.onclick=async()=>{await toggleFollowSp('sp:'+ba.type,sp.n);bt.textContent=FOLX.some(f=>f.k==='sp:'+ba.type)?'🔔 Following':'🔔 Follow until extinct'};$('wiki').querySelector('.btns').prepend(bt)}}});if(!A.length){followAni=ba;cam.tour=false;setBtn()}return}try{tapExtra(x,y)}catch(e){console.error(e)}}
 
 // ================== real cities (34,006 places with 15,000+ people today) ==================
@@ -1904,7 +1917,7 @@ function updTags(){if(!tagsOn)return;const lim=1.9;if(cam.alt>lim){TAGS.forEach(
  for(const z of WZ){if(!z.U||!z.trees||z.U.angleTo(ct)>.04)continue;for(const tr of z.trees){if(!tr[8])continue;const w=locW(z,tr[1],tr[2],tr[3]);add(w[0],w[1],w[2],tr[8],'','g',-.4,.05*tr[4]*(tr[7]||1))}}
  for(const b of LBOATS)add(b[0],b[1],b[2],b[3],'','',.1,.03);for(const c of LCAR)add(c[0],c[1],c[2],c[3],c[4],'',.1,.03);for(const r of ROCKETS)if(r.wx!==undefined)add(r.wx,r.wy,r.wz,r.name,'','',.3,.02);for(const tr of TRAINS)if(tr.wx!==undefined)add(tr.wx,tr.wy,tr.wz,tr.name,'','',.1,.03);
  for(const p of PLANES)if(p.wx!==undefined)add(p.wx,p.wy,p.wz,simY<1958?'Propeller airliner':'Jet airliner',p.act||'','',.2,.03);
- for(const s of SHIPS)if(s.wx!==undefined)add(s.wx,s.wy,s.wz,simY<1850?'Sailing ship':simY<1950?'Steamship':'Cargo ship','','',.2,.08);
+ for(const s of SHIPS)if(s.wx!==undefined)add(s.wx,s.wy,s.wz,shipName(s,simY),s.act||'','',.2,.08);
  C.sort((a,b)=>a[6]-b[6]);const placed=[];let n=0;
  for(const c of C){if(n>=TAGS.length)break;const up=_w.set(c[0],c[1],c[2]).normalize();_w.set(c[0]+up.x*c[7],c[1]+up.y*c[7],c[2]+up.z*c[7]);if((c[0]-cp.x)*up.x+(c[1]-cp.y)*up.y+(c[2]-cp.z)*up.z>0)continue;_w.project(camera);if(_w.z>1||Math.abs(_w.x)>1.05||Math.abs(_w.y)>1.05)continue;
   const x=(_w.x+1)/2*innerWidth,y=(1-_w.y)/2*innerHeight;if(placed.some(p=>Math.abs(p[0]-x)<70&&Math.abs(p[1]-y)<26))continue;if((c[5]==='a'||c[5]==='g')&&placed.some(p=>p[2]===c[3]&&Math.hypot(p[0]-x,p[1]-y)<(c[5]==='g'?260:170)))continue;if(c[5]==='g'&&placed.filter(p=>p[3]).length>=6)continue;if(placed.length>=26)break;placed.push([x,y,c[3],c[5]==='g']);
