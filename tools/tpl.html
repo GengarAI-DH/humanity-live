@@ -355,15 +355,30 @@ function paleoPos(lat,lon,Y){if(Y>=-5e6)return[lat,lon];const k=plateOf(lat,lon)
 const SRC=new Int32Array(GW*GH),LDIST=new Uint8Array(GW*GH);
 function bfs(isSrc,out){const q=new Int32Array(N);let h=0,t=0;for(let k=0;k<N;k++){if(isSrc(k)){out[k]=0;q[t++]=k}else out[k]=255}
  while(h<t){const k=q[h++],i=k%GW,j=(k/GW)|0,d=out[k];if(d>=40)continue;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){if(!a&&!b)continue;const jj=j+b;if(jj<0||jj>=GH)continue;const kk=jj*GW+(i+a+GW)%GW;if(out[kk]>d+1){out[kk]=d+1;q[t++]=kk}}}}
-function paleoMap(Y){const my=-Y/1e6,QI={};for(const k of PORDER)QI[k]=plateQ(k,Y).invert();
+// Young water: seas and lakes that did not exist before the ice ages or the Red Sea rift, drawn as land in deep time.
+// Hudson Bay, James Bay, Foxe Basin and the Great Lakes were scoured and pressed down by the Pleistocene ice sheets; the Baltic,
+// Bothnia, Ladoga and Onega basins likewise (Baltic amber forests stood there in the Eocene). The Red Sea and Gulf of Aden opened
+// from about 25-30 Ma. Late Cretaceous maps (Scotese PALEOMAP 70 Ma; Blakey, Colorado Plateau Geosystems) show these as land.
+// The Great Lakes are land cells in the mask, with their lake-bed heights, so they are marked too (bed below the 185 m lake level).
+// value = age in Ma before which the cell counts as land; e = elevation factor for its colour and height.
+let YW=null;const YWE=[0,.22,.2,.19,.17];
+function youngWater(){YW=new Uint8Array(N);const YB=[[51,69.5,-96,-76,-500,1],[41,49.5,-93,-75.5,-9e3,2],[53.5,66,10.5,30.5,-300,3],[59.5,63,29,36.5,-9e3,3],[12.5,29.9,32,44,-9e3,4],[10.5,15,42.5,51.5,-9e3,4]];
+ for(let k=0;k<N;k++){const la=latOf((k/GW)|0),lo=lonOf(k%GW);if(LAND[k]){if(la>=41&&la<=49.5&&lo>=-93&&lo<=-75.5&&TOPOM[k]<185)YW[k]=2;continue}for(const b of YB)if(la>=b[0]&&la<=b[1]&&lo>=b[2]&&lo<=b[3]&&TOPOM[k]>b[4]){YW[k]=b[5];break}}}
+// Western Interior Seaway shores in present-day coordinates, every 5 degrees of latitude from 30N to 60N (west, east longitude),
+// read from Late Cretaceous (Campanian-Maastrichtian) maps: Blakey/Colorado Plateau Geosystems 75 and 70 Ma, Scotese PALEOMAP 70 Ma,
+// Slattery et al. 2015 (Wyoming Geol. Assoc. Guidebook). About 1,000 km wide; plus the Mississippi Embayment to 37N.
+const WIS=[[-103,-93],[-105.5,-96],[-107.5,-97],[-108.5,-97],[-109.5,-97.5],[-111.5,-99],[-115,-103]];
+function wisSea(la,lo){if(la<37&&la>30&&lo>-92&&lo<-88)return true;if(la<30||la>60)return false;const f=(la-30)/5,i=Math.min(5,Math.floor(f)),t=f-i,a=WIS[i],b=WIS[i+1];return lo>lerp(a[0],b[0],t)+(fbm(la/2.5,1.7)-.5)*5&&lo<lerp(a[1],b[1],t)+(fbm(la/2.5,6.3)-.5)*5}
+function ywAge(t){return t===4?25:2.6}
+function paleoMap(Y){const my=-Y/1e6,QI={};if(!YW)youngWater();const eS=kk=>YW[kk]?YWE[YW[kk]]:E0[kk];for(const k of PORDER)QI[k]=plateQ(k,Y).invert();
  const v=new THREE.Vector3(),cret=my<145&&my>66,seaway=my<100&&my>70;
  for(let j=0;j<GH;j++){const la=latOf(j),cl=Math.cos(la*DEG),sl=Math.sin(la*DEG);for(let i=0;i<GW;i++){const lo=lonOf(i)*DEG,k=j*GW+i;let src=-1;
-  for(const pk of PORDER){v.set(cl*Math.cos(lo),cl*Math.sin(lo),sl).applyQuaternion(QI[pk]);const la0=Math.asin(clamp(v.z,-1,1))/DEG,lo0=Math.atan2(v.y,v.x)/DEG,kk=clamp(Math.floor((90-la0)*2),0,GH-1)*GW+((Math.floor((lo0+180)*2))%GW+GW)%GW;if(LAND[kk]&&PLC[kk]===PIDX[pk]){src=kk;break}}
-  if(src>=0&&cret){const sla=latOf((src/GW)|0),slo=lonOf(src%GW);if(E0[src]<.15)src=-1;else if(seaway&&(ell(sla,slo,[45,-102,20,6])<1||ell(sla,slo,[15,3,8,7])<1||ell(sla,slo,[50,12,6,14])<1))src=-1}
+  for(const pk of PORDER){v.set(cl*Math.cos(lo),cl*Math.sin(lo),sl).applyQuaternion(QI[pk]);const la0=Math.asin(clamp(v.z,-1,1))/DEG,lo0=Math.atan2(v.y,v.x)/DEG,kk=clamp(Math.floor((90-la0)*2),0,GH-1)*GW+((Math.floor((lo0+180)*2))%GW+GW)%GW;if((LAND[kk]||(YW[kk]&&my>ywAge(YW[kk])))&&PLC[kk]===PIDX[pk]){src=kk;break}}
+  if(src>=0&&cret){const sla=latOf((src/GW)|0),slo=lonOf(src%GW);if(eS(src)<.15)src=-1;else if(seaway&&(wisSea(sla,slo)||ell(sla,slo,[15,3,8,7])<1||ell(sla,slo,[50,12,6,14])<1))src=-1}
   SRC[k]=src}}
  bfs(k=>SRC[k]>=0,DIST);bfs(k=>SRC[k]<0,LDIST);
  for(let k=0;k<N;k++){const j=(k/GW)|0,lat=latOf(j),al=Math.abs(lat),src=SRC[k];
-  if(src>=0){const E=.1+(E0[src]-.12)*(my>45?.35:1),sla=latOf((src/GW)|0),slo=lonOf(src%GW);EC[k]=Math.max(.03,E);
+  if(src>=0){const E=.1+(eS(src)-.12)*(my>45?.35:1),sla=latOf((src/GW)|0),slo=lonOf(src%GW);EC[k]=Math.max(.03,E);
    const t=1-Math.pow(al/80,1.6);let m=.92-LDIST[k]*.045+(fbm(slo/12+3,sla/12+5)-.5)*.5-(al>14&&al<32?.18:0);
    const iceA=(PLC[src]===PIDX.an&&my<34)||(ell(sla,slo,[73,-41,10,22])<1&&my<2.7);let c,b;
    if(iceA||t<.04){c=[236,240,245];b=1}else if(m<.22){c=my>200?[186,112,72]:[206,168,118];b=6}else if(m<.42){c=my>23?[150,138,82]:[176,160,98];b=5}else if(t<.3){c=[48,78,56];b=3}else if(t>.75&&m>.7){c=[34,88,40];b=8}else{c=my>125?[52,86,46]:[62,104,50];b=my>125?3:4}
