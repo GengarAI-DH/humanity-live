@@ -410,7 +410,19 @@ const PQ={},QID=new THREE.Quaternion();
 function initPlates(){for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)PLC[j*GW+i]=PIDX[plateOf(latOf(j),lonOf(i))];
  for(const k in PLP){const p=PLP[k],a=vg(p[0][0],p[0][1]),b=vg(p[1][0],p[1][1]);const qm=new THREE.Quaternion().setFromUnitVectors(a,b),qs=new THREE.Quaternion().setFromAxisAngle(b,p[2]*DEG);PQ[k]=qs.multiply(qm)}}
 function plateFrac(k,my){const w=PLW[k];let f=clamp((w[0]-my)/(w[0]-w[1]),0,1);return f*f*(3-2*f)}
-function plateQ(k,Y){return PQ[k].clone().slerp(QID,plateFrac(k,-Y/1e6))}
+// Plate positions at 70 Ma fitted to the Scotese & Wright (2018) PALEOMAP PaleoDEM for 70 Ma (Zenodo doi:10.5281/zenodo.5460860, CC BY 4.0):
+// each plate's modern land rotated to best cover the PaleoDEM's continental area (tools/paleofit.py). Greater India sits at 10-35 S, Africa
+// and South America 10-14 degrees from the old guess, Australia 20. Before 70 Ma the old path is bent onto these; after, they ease to today.
+const Q70D={af:[-0.1014,0.0852,-0.0670,0.9889],eu:[-0.0178,0.0723,-0.0256,0.9969],na:[-0.0524,0.1052,0.1240,0.9853],sa:[0.0070,0.0350,0.1384,0.9897],an:[-0.0225,0.0083,-0.0606,0.9979],au:[-0.2042,-0.1064,-0.0877,0.9692],md:[-0.0822,0.0929,-0.0742,0.9895],in:[-0.4417,-0.1463,-0.1193,0.8771]},Q70={},Q70C={};
+function plateQ0(k,my){return PQ[k].clone().slerp(QID,plateFrac(k,my))}
+function plateQ(k,Y){const my=-Y/1e6;if(!Q70[k]){const d=Q70D[k];if(!d)return plateQ0(k,my);Q70[k]=new THREE.Quaternion(d[0],d[1],d[2],d[3]).normalize();Q70C[k]=Q70[k].clone().multiply(plateQ0(k,70).invert())}
+ if(my<=70){const e=PLW[k][1]<70?PLW[k][1]:5;let g=clamp((70-my)/(70-e),0,1);g=g*g*(3-2*g);return Q70[k].clone().slerp(QID,g)}
+ return Q70C[k].clone().slerp(QID,clamp((my-70)/40,0,1)).multiply(plateQ0(k,my))}
+// PaleoDEM land and sea (public/paleodem.json, 65/70/75 Ma, int8 = metres/5), loaded lazily in deep time; null until then.
+let PDEM=null,PDEMP=false;async function loadPaleoDEM(){if(PDEM||PDEMP)return;PDEMP=true;try{const r=await fetch('paleodem.json');if(!r.ok)return;const d=await r.json(),m={};for(const a in d.m){const b=atob(d.m[a]),u=new Int8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i)<<24>>24;m[a]=u}PDEM={w:d.w,h:d.h,m};if(simY<-5e6){CLIM.sig=null;applyClimate(simY,true)}}catch(e){}}
+function pdemAt(la,lo,my){if(!PDEM||my<60||my>80)return null;const a=my<=70?(my<65?[65,65,0]:[65,70,(my-65)/5]):[70,75,Math.min(1,(my-70)/5)],W=PDEM.w;
+ const fi=clamp(la+90,0,179.999),fj=clamp(lo+180,0,359.999),i=fi|0,j=fj|0,ti=fi-i,tj=fj-j,f=M=>(M[i*W+j]*(1-ti)*(1-tj)+M[(i+1)*W+j]*ti*(1-tj)+M[i*W+j+1]*(1-ti)*tj+M[(i+1)*W+j+1]*ti*tj)*5;
+ const A=PDEM.m[a[0]],B=PDEM.m[a[1]];return a[2]?f(A)*(1-a[2])+f(B)*a[2]:f(A)}
 function paleoPos(lat,lon,Y){if(Y>=-5e6)return[lat,lon];const k=plateOf(lat,lon),v=vg(lat,lon).applyQuaternion(plateQ(k,Y));return[Math.asin(clamp(v.z,-1,1))/DEG,Math.atan2(v.y,v.x)/DEG]}
 const SRC=new Int32Array(GW*GH),LDIST=new Uint8Array(GW*GH);
 function bfs(isSrc,out){const q=new Int32Array(N);let h=0,t=0;for(let k=0;k<N;k++){if(isSrc(k)){out[k]=0;q[t++]=k}else out[k]=255}
@@ -434,7 +446,7 @@ function paleoMap(Y){const my=-Y/1e6,QI={};if(!YW)youngWater();const eS=kk=>YW[k
  const v=new THREE.Vector3(),cret=my<145&&my>66,seaway=my<100&&my>70;
  for(let j=0;j<GH;j++){const la=latOf(j),cl=Math.cos(la*DEG),sl=Math.sin(la*DEG);for(let i=0;i<GW;i++){const lo=lonOf(i)*DEG,k=j*GW+i;let src=-1;
   for(const pk of PORDER){v.set(cl*Math.cos(lo),cl*Math.sin(lo),sl).applyQuaternion(QI[pk]);const la0=Math.asin(clamp(v.z,-1,1))/DEG,lo0=Math.atan2(v.y,v.x)/DEG,kk=clamp(Math.floor((90-la0)*2),0,GH-1)*GW+((Math.floor((lo0+180)*2))%GW+GW)%GW;if((LAND[kk]||(YW[kk]&&my>ywAge(YW[kk])))&&PLC[kk]===PIDX[pk]){src=kk;break}}
-  if(src>=0&&cret){const sla=latOf((src/GW)|0),slo=lonOf(src%GW);if(eS(src)<.15)src=-1;else if(seaway&&(wisSea(sla,slo)||ell(sla,slo,[15,3,8,7])<1||ell(sla,slo,[50,12,6,14])<1))src=-1}
+  const pz=src>=0?pdemAt(la,lonOf(i),my):null;if(pz!==null){if(pz<-15||(seaway&&wisSea(latOf((src/GW)|0),lonOf(src%GW))))src=-1}else if(src>=0&&cret){const sla=latOf((src/GW)|0),slo=lonOf(src%GW);if(eS(src)<.15)src=-1;else if(seaway&&(wisSea(sla,slo)||ell(sla,slo,[15,3,8,7])<1||ell(sla,slo,[50,12,6,14])<1))src=-1}
   SRC[k]=src}}
  bfs(k=>SRC[k]>=0,DIST);bfs(k=>SRC[k]<0,LDIST);
  for(let k=0;k<N;k++){const j=(k/GW)|0,lat=latOf(j),al=Math.abs(lat),src=SRC[k];
@@ -482,7 +494,7 @@ let SEAS=0,SEASM=-1;function season(){const d=new Date(),doy=(d-Date.UTC(d.getUT
 const EC=new Float32Array(N),REEFS=[[-18,147,8,4],[18,-78,5,12],[22,37.5,8,2.5],[-2,125,9,13],[4,73.3,4,1.5],[-17,-150,4,8]];
 function applyClimate(Y,force){
  const paleo=Y<-3e6,warm=clamp((Y-2000)/100,0,1);let sea=0,ice=0,g=0;
- if(paleo){const sig='p'+Math.floor(Y/4e5);if(!force&&CLIM.sig===sig)return false;ICEK2=-1;CLIM={sig,sea:0,ice:0,g:0};paleoMap(Y)}
+ if(paleo){const sig='p'+Math.floor(Y/4e5);if(!force&&CLIM.sig===sig)return false;if(!PDEM&&typeof loadPaleoDEM==='function'&&simY<-5e6)setTimeout(loadPaleoDEM,0);ICEK2=-1;CLIM={sig,sea:0,ice:0,g:0};paleoMap(Y)}
  else{if(Y<-70000){const ph=Math.sin(2*Math.PI*(Y+20000)/100000);ice=clamp(.45+.5*ph,0,1)*clamp((Y+3e6)/4e5,0,1);sea=ice*.1}else{sea=pw(SEA,Y);ice=pw(ICEF,Y);g=pw(GRN,Y)}
   const ls=lakeSig(Y);if(!force&&!CLIM.sig&&Math.abs(sea-CLIM.sea)<.004&&Math.abs(ice-CLIM.ice)<.04&&Math.abs(g-CLIM.g)<.08&&Math.abs(warm-(CLIM.w||0))<.05&&ls===CLIM.ls)return false;
   ICEK2=Y>-23050?((1950-Y)/500):ice>.001?(1950-ICEY(ice))/500:-1;
@@ -2168,7 +2180,7 @@ async function loadBiomeAtlas(){if(BAT)return;try{const r=await fetch('tex/biome
 function batCol(cl,x,y){const wu=x+(vn(x/23,y/23)-.5)*34,wv=y+(vn(x/23+9,y/23+4)-.5)*34;let u=((wu%128)+128)%128|0,v=((wv%64)+64)%64|0;if(u>63)u=127-u;if(v>31)v=63-v;
  const o=(((y>>3)&127)*256+((x>>3)&255))*24+cl*4;let r=0,g=0,b=0;for(let i=0;i<4;i++){const w=BWT[o+i],q=((cl*32+v)*256+i*64+u)*4;r+=BAT[q]*w;g+=BAT[q+1]*w;b+=BAT[q+2]*w}BTC[0]=r;BTC[1]=g;BTC[2]=b;return BTC}
 async function loadWater(){try{const r=await fetch('water.json');if(!r.ok)return;WATER=await r.json();CLIM.sig=null;applyClimate(simY,true)}catch(e){}}
-async function loadCities(){loadBorders();loadBlueMarble();loadBiomeAtlas();loadWater();loadIce();loadQuakes();loadSpecies();loadJourneys();loadInventions();loadLandforms();loadDeepTime();loadWonders();loadExtinctions();loadStorms();loadBattles();loadMigrations();loadSky();loadWrecks();if(simY>-12000)loadHeritage();if(simY>1850)loadTall();try{const r=await fetch('cities.json');if(!r.ok)return;const L=await r.json();const n=L.length;
+async function loadCities(){loadBorders();if(simY<-5e6)loadPaleoDEM();loadBlueMarble();loadBiomeAtlas();loadWater();loadIce();loadQuakes();loadSpecies();loadJourneys();loadInventions();loadLandforms();loadDeepTime();loadWonders();loadExtinctions();loadStorms();loadBattles();loadMigrations();loadSky();loadWrecks();if(simY>-12000)loadHeritage();if(simY>1850)loadTall();try{const r=await fetch('cities.json');if(!r.ok)return;const L=await r.json();const n=L.length;
  CITY={n,name:L.map(x=>x[0]),lat:new Float32Array(n),lon:new Float32Array(n),pop:new Float64Array(n),cc:L.map(x=>x[4]),ct:[],gate:new Float32Array(n),fy:new Float32Array(n).fill(NaN),fr:new Uint8Array(n),U:new Float32Array(n*3)};
  const pos=new Float32Array(n*3),col=new Float32Array(n*3);
  L.forEach((x,i)=>{CITY.lat[i]=x[1];CITY.lon[i]=x[2];CITY.pop[i]=x[3];const ct=CC[x[4]]?CC[x[4]].ct:'';CITY.ct[i]=ct;CITY.gate[i]=cityGate(x[4],ct);if(typeof x[5]==='number'){CITY.fy[i]=x[5];CITY.fr[i]=x[6]?1:0;CITY.gate[i]=x[5]}const v=v3(x[1],x[2],1);CITY.U[i*3]=v.x;CITY.U[i*3+1]=v.y;CITY.U[i*3+2]=v.z;const r=R+Math.max(0,hAt(x[1],x[2]))+.03;pos[i*3]=v.x*r;pos[i*3+1]=v.y*r;pos[i*3+2]=v.z*r});
