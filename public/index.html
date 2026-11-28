@@ -675,22 +675,41 @@ function makeGlobe(){
  // (~5°N), clear subtropical highs (15–30°, where the big deserts are), cloudy mid-latitude storm tracks (45–65°, cloudiest over the Southern Ocean),
  // and fewer clouds over the poles; mid-latitude clouds are stretched east-west along the westerlies
  const G_=(x,m,w)=>Math.exp(-(((x-m)/w)**2)),CB=lat=>.22+.42*G_(lat,5,7)-.17*G_(Math.abs(lat),23,8)+.34*G_(Math.abs(lat),55,11)*(lat<0?1.15:1)-.12*clamp((Math.abs(lat)-72)/12,0,1);
- for(let y=0;y<512;y++)for(let x=0;x<1024;x++){const lat=90-y/512*180,ml=clamp((Math.abs(lat)-30)/20,0,1),sx_=1+ml*1.8;let v=fbm(x/(60*sx_),y/52)*.7+fbm(x/(18*sx_),y/16)*.4+(CB(lat)-.4)*.9-.6;const p=(y*1024+x)*4;ci.data[p]=ci.data[p+1]=ci.data[p+2]=255;ci.data[p+3]=clamp(v*600,0,230)}
- cx.putImageData(ci,0,0);
- clouds=new THREE.Mesh(new THREE.SphereGeometry(R+3.2,128,64),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cc),transparent:true,depthWrite:false,opacity:.5}));scene.add(clouds);
+ // the cloud pattern (noise) is made once; how much of it shows in each place comes from the real monthly cloud cover (cloudPaint)
+ // (domain-warped so cells, swirls and frontal bands form instead of straight streaks; mid-latitude cloud is still drawn out along the westerlies)
+ const CN=new Float32Array(1024*512),t0_=performance.now();for(let y=0;y<512;y++)for(let x=0;x<1024;x++){const lat=90-y/512*180,ml=clamp((Math.abs(lat)-30)/20,0,1),sx_=1+ml*.9,wx=(vn(x/90,y/45)-.5)*3.2,wy=(vn(x/90+17,y/45+9)-.5)*2.4;CN[y*1024+x]=fbm(x/(60*sx_)+wx,y/52+wy)*.7+fbm(x/(18*sx_)+wx*2.6,y/16+wy*2.6)*.4}
+ if(window.__TEST)window.__CLDMS=performance.now()-t0_;
+ CLD={cx,ci,N:CN,q:CN.filter((_,i)=>i%37===0).sort(),CB,key:'',t:0};cloudPaint(null);
+ clouds=new THREE.Mesh(new THREE.SphereGeometry(R+3.2,128,64),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cc),transparent:true,depthWrite:false,opacity:.5}));scene.add(clouds);setTimeout(loadCloudClim,2500);
  // cloud formations drift with the real wind belts (trade winds blow west in the tropics, westerlies blow east in mid-latitudes) and slowly form and break up (flow-map blend of two drifting copies)
  clouds.material.onBeforeCompile=sh=>{sh.uniforms.uCT={value:0};clouds.userData.u=sh.uniforms.uCT;sh.fragmentShader='uniform float uCT;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
  float la=abs(vUv.y-.5);float w=mix(-1.,1.,smoothstep(.1,.18,la))*(1.-smoothstep(.36,.45,la)*.6);
  float p1=fract(uCT/150.),p2=fract(uCT/150.+.5);
  vec4 c1=texture2D(map,vec2(vUv.x+w*p1*.035,vUv.y+sin(vUv.x*25.+uCT*.01)*.004*p1));
- vec4 c2=texture2D(map,vec2(vUv.x+w*p2*.035+.31,vUv.y));
+ vec4 c2=texture2D(map,vec2(vUv.x+w*p2*.035,vUv.y));
  vec4 texelColor=mix(c1,c2,abs(2.*p1-1.));texelColor=mapTexelToLinear(texelColor);diffuseColor*=texelColor;
+ diffuseColor.a*=.4+.6*clamp(dot(vLightFront,vec3(.333))*2.2,0.,1.);
 #endif`)};
  // stars
  const sg=new THREE.BufferGeometry(),sp=new Float32Array(4500);for(let i=0;i<1500;i++){const v=new THREE.Vector3(rnd()-.5,rnd()-.5,rnd()-.5).normalize().multiplyScalar(2500);sp.set([v.x,v.y,v.z],i*3)}
  sg.setAttribute('position',new THREE.BufferAttribute(sp,3));scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:1.6,sizeAttenuation:false})));
 }
-let clouds;
+let clouds,CLD=null,CLM=null;
+// Real cloud cover by place and month: NCEP/NCAR Reanalysis 1 long-term monthly mean total cloud cover 1991-2020 (NOAA PSL; Kalnay et al. 1996),
+// 2-degree grid in tex/clouds.jpg (tools/cloudclim.py). Shows the ITCZ band moving north in July and south in January, the clear Sahara,
+// Arabia and Australia, the Indian and West African monsoons, the stormy Southern Ocean. In each place the cloud pattern covers that share of the sky.
+// Before 10,000 BC the continents' climate differed, so only the month's average by latitude is used (the real belts, no modern regional detail).
+async function loadCloudClim(){if(CLM)return;try{const r=await fetch('tex/clouds.jpg');if(!r.ok)return;const b=await createImageBitmap(await r.blob());const c=document.createElement('canvas');c.width=180;c.height=1080;const x=c.getContext('2d');x.drawImage(b,0,0);const d=x.getImageData(0,0,180,1080).data,m=new Float32Array(180*1080);for(let i=0;i<m.length;i++)m[i]=d[i*4]/255;CLM=m;CLD.key='';cloudTick(1)}catch(e){}}
+function cloudPaint(G){if(!CLD)return;const{ci,N,q}=CLD,D=ci.data,nq=q.length-1;
+ for(let y=0;y<512;y++){const lat=90-(y+.5)/512*180,gy=clamp((90-lat)/2-.5,0,89),y0=Math.floor(gy),y1=Math.min(89,y0+1),fy=gy-y0;
+  for(let x=0;x<1024;x++){let f;if(G){const gx=((x+.5)/1024*180-.5+180)%180,x0=Math.floor(gx),x1=(x0+1)%180,fx=gx-x0;f=(G[y0*180+x0]*(1-fx)+G[y0*180+x1]*fx)*(1-fy)+(G[y1*180+x0]*(1-fx)+G[y1*180+x1]*fx)*fy}else f=clamp(CLD.CB(lat)+.1,.05,.9);
+   const i=y*1024+x,v=N[i]-q[clamp(Math.round((1-f)*nq),0,nq)],p=i*4,a=clamp(v/.05,0,1);D[p]=D[p+1]=D[p+2]=255;D[p+3]=a*(170+85*clamp(v/.16,0,1))}}
+ CLD.cx.putImageData(ci,0,0);if(clouds&&clouds.material.map)clouds.material.map.needsUpdate=true}
+// repaints the clouds when the month moves on (about every 3 days) or the era crosses 10,000 BC; checked every few seconds
+function cloudTick(force){if(!CLD||!CLM)return;const t=performance.now();if(!force&&t-CLD.t<4000)return;CLD.t=t;const now=new Date(),doy=(now-Date.UTC(now.getUTCFullYear(),0,1))/864e5,mf=((doy-15.2)/30.44+12)%12,zon=simY<-10000,key=(zon?'z':'m')+Math.round(mf*10);if(key===CLD.key)return;CLD.key=key;
+ const m0=Math.floor(mf),m1=(m0+1)%12,t1=mf-m0,G=new Float32Array(180*90);for(let i=0;i<16200;i++)G[i]=CLM[m0*16200+i]*(1-t1)+CLM[m1*16200+i]*t1;
+ if(zon)for(let y=0;y<90;y++){let s=0;for(let x=0;x<180;x++)s+=G[y*180+x];s/=180;for(let x=0;x<180;x++)G[y*180+x]=s}
+ cloudPaint(G)}
 // ground height samples around a site; a site is rebuilt only when these change (they rarely do: sea level, ice, seafloor toggles)
 function siteHS(s){const o=[];for(const a of[-.4,0,.4])for(const c of[-.4,0,.4])o.push(hAt0(s.lat+a,s.lon+c));return o}
 function siteHMoved(s){const h=siteHS(s),o=s.hs;s.hs=h;if(!o)return true;for(let i=0;i<9;i++)if(Math.abs(h[i]-o[i])>1e-5)return true;return false}
@@ -2162,7 +2181,7 @@ function camUpdate(dt){
  const cl=camera.position.length(),cg=R+Math.max(0,hDir(camera.position.x,camera.position.y,camera.position.z))+.04;if(cl<cg)camera.position.multiplyScalar(cg/cl);
  camera.up.copy(U).multiplyScalar(Math.sin(th)).addScaledVector(F,Math.cos(th));camera.lookAt(T);
  camera.near=clamp(cam.alt*.015,.003,8);camera.far=4000;camera.updateProjectionMatrix();
- clouds.material.opacity=clamp((cam.alt-5)/30,0,1)*.5;clouds.rotation.y+=dt*.002;if(clouds.userData.u)clouds.userData.u.value+=dt}
+ clouds.material.opacity=clamp((cam.alt-5)/30,0,1)*.82;cloudTick();if(clouds.userData.u)clouds.userData.u.value+=dt}
 function flyTo(dir,alt){cam.fly={a:cam.t.clone(),b:dir.clone().normalize(),a0:cam.alt,a1:alt,t:0,d:clamp(cam.t.angleTo(dir)*2.2,1.2,3.2),hump:Math.min(90,cam.t.angleTo(dir)*R*.7)}}
 const TOURH=[];
 function tourNext(){followId=0;const far=U=>TOURH.every(v=>v.angleTo(U)>.25);let U=null,alt=1.2,t='',d='';

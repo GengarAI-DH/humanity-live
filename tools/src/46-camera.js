@@ -14,7 +14,7 @@ function camUpdate(dt){
  const cl=camera.position.length(),cg=R+Math.max(0,hDir(camera.position.x,camera.position.y,camera.position.z))+.04;if(cl<cg)camera.position.multiplyScalar(cg/cl);
  camera.up.copy(U).multiplyScalar(Math.sin(th)).addScaledVector(F,Math.cos(th));camera.lookAt(T);
  camera.near=clamp(cam.alt*.015,.003,8);camera.far=4000;camera.updateProjectionMatrix();
- clouds.material.opacity=clamp((cam.alt-5)/30,0,1)*.5;clouds.rotation.y+=dt*.002;if(clouds.userData.u)clouds.userData.u.value+=dt}
+ clouds.material.opacity=clamp((cam.alt-5)/30,0,1)*.82;cloudTick();if(clouds.userData.u)clouds.userData.u.value+=dt}
 function flyTo(dir,alt){cam.fly={a:cam.t.clone(),b:dir.clone().normalize(),a0:cam.alt,a1:alt,t:0,d:clamp(cam.t.angleTo(dir)*2.2,1.2,3.2),hump:Math.min(90,cam.t.angleTo(dir)*R*.7)}}
 const TOURH=[];
 function tourNext(){followId=0;const far=U=>TOURH.every(v=>v.angleTo(U)>.25);let U=null,alt=1.2,t='',d='';
