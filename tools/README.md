@@ -45,3 +45,6 @@ All of these need `python3 build.py` first (they load `tools/test.html`) and run
 ## Backups and admin
 - Every night (11:00 UTC, about 3 AM Pacific) the worker saves the world, chat, ideas, alerts and all cards to the BACKUPS KV namespace (gzip, last 30 days). POST /api/admin/backups {key} lists them; POST /api/admin/backup {key} makes one now; POST /api/admin/restore {key, day, confirm:"RESTORE <day>", tables:[...]} restores (it saves the current state first). The key is the ADMIN_KEY secret; never put it in the repo.
 - Never change table layouts in a way that breaks restoring older backups.
+
+## Annoyance check
+`python3 tools/annoy.py` (after build.py) counts automatic popups per minute at ground level in three eras and fails above 3 a minute. Run it before shipping anything that shows messages.

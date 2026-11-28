@@ -1,6 +1,6 @@
 {
 "v": 1,
-"about": "Big map labels shown when zoomed out. Each: [name, lat, lon (present-day anchor point; moved with the plates in deep time), from year, to year, kind c=continent o=ocean/sea r=region/ice/land bridge, short note]. Years are negative for the past.",
+"about": "Big map labels shown when zoomed out. Each: [name, lat, lon (present-day anchor point; moved with the plates in deep time), from year, to year, kind c=continent o=ocean/sea r=region/ice/land bridge, short note, optional Wikipedia title]. Years are negative for the past.",
 "labels": [
 [
 "Laramidia",
@@ -9,7 +9,8 @@
 -100000000,
 -66000000,
 "c",
-"Western North America, an island continent split off by an inland sea"
+"Western North America, an island continent split off by an inland sea",
+"Laramidia"
 ],
 [
 "Appalachia",
@@ -18,7 +19,8 @@
 -100000000,
 -66000000,
 "c",
-"Eastern North America, cut off by the Western Interior Seaway"
+"Eastern North America, cut off by the Western Interior Seaway",
+"Appalachia (Mesozoic landmass)"
 ],
 [
 "Western Interior Seaway",
@@ -27,7 +29,8 @@
 -100000000,
 -66040000,
 "o",
-"A shallow sea that split North America in two"
+"A shallow sea that split North America in two",
+"Western Interior Seaway"
 ],
 [
 "Asia",
@@ -45,7 +48,8 @@
 -100000000,
 -34000000,
 "c",
-"Europe was a scatter of islands in a warm shallow sea"
+"Europe was a scatter of islands in a warm shallow sea",
+"Geology of Europe"
 ],
 [
 "Europe",
@@ -81,7 +85,8 @@
 -100000000,
 -50000000,
 "c",
-"An island continent racing north toward Asia"
+"An island continent racing north toward Asia",
+"Indian Plate"
 ],
 [
 "Madagascar",
@@ -90,7 +95,8 @@
 -88000000,
 2100,
 "c",
-"Split from India about 88 million years ago"
+"Split from India about 88 million years ago",
+"Geology of Madagascar"
 ],
 [
 "Antarctica",
@@ -108,7 +114,8 @@
 -100000000,
 -35000000,
 "c",
-"Australia was still joined to Antarctica"
+"Australia was still joined to Antarctica",
+"Gondwana"
 ],
 [
 "Australia",
@@ -135,7 +142,8 @@
 -100000000,
 -15000000,
 "o",
-"The ancient sea between Africa, India and Eurasia"
+"The ancient sea between Africa, India and Eurasia",
+"Tethys Ocean"
 ],
 [
 "Young Atlantic Ocean",
@@ -144,7 +152,8 @@
 -100000000,
 -40000000,
 "o",
-"Still widening as the Americas pull away"
+"Still widening as the Americas pull away",
+"Atlantic Ocean"
 ],
 [
 "Atlantic Ocean",
