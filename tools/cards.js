@@ -41,7 +41,7 @@ const slug = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '
 const clean = n => String(n).replace(/\s*\(.*?\)\s*/g, ' ').trim();
 
 const cards = [], seen = new Set();
-// kind: an=animal pl=plant ev=event ms=milestone wo=wonder jr=journey ex=extinction st=storm lf=landform
+// kind: an=animal pl=plant ev=event ms=milestone wo=wonder jr=journey ex=extinction st=storm lf=landform iv=invention
 function add(kind, key, name, year, rar, fact, wiki, extra) {
   const se = seasonOf(year);
   if (!se) return;
@@ -89,6 +89,12 @@ for (const j of (J('journeys.json') || {}).jrn || []) add('jr', j[1], j[1], j[0]
 for (const e of (J('extinctions.json') || {}).ext || []) add('ex', e[1], 'Last ' + e[1], e[0], 3, e[2], e[5], 0);
 // tragic storms
 for (const s of (J('storms.json') || {}).st || []) add('st', s[2], s[2], s[0], 2, s[8], s[9], 0);
+// inventions and things people made (new ones become cards; ones already in the timeline give their milestone card a fact)
+for (const e of (J('inventions.json') || {}).inv || []) {
+  if (!e || e.length < 10) continue;
+  if (e[10]) { const c = cards.find(c => c[0] === 'ms-' + slug(e[1])); if (c && !c[6]) { c[6] = e[5]; c[7] = e[6] } continue }
+  add('iv', e[9], e[9], e[0], e[0] < -10000 ? 3 : 2, e[5], e[6], 0);
+}
 // landforms
 for (const l of (J('landforms.json') || {}).lf || []) add('lf', l[2], l[9] || l[2], l[0], 2, l[7], l[8], 0);
 
