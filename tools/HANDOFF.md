@@ -12,6 +12,7 @@ How to use it:
 
 ## species (species and inventions)
 - 2026-11-27: 10 insect groups in public/species.json (i_*) have no fossil-site lists; they are worldwide ('all'), so they need none unless the data checker should skip them. (species run)
+- 2026-11-27: Devin asked for the full roster of life ~70 million years ago in the right places: more Maastrichtian dinosaurs, mammals, insects and plants per region from the Paleobiology Database (72-66 Ma occurrences), each placed only where its fossils are. Also: 'Cinnamon tree (Cinnamomum)' shows in the Cretaceous from old leaf identifications; consider labelling pre-66 Ma occurrences as a laurel-family (Lauraceae) tree. (viewer report)
 
 ## cards
 - 2026-11-27: 695 of 1,477 cards in public/cards.json have no fact line (mostly milestones and events). Teach tools/cards.js to take facts from the matching DISC/BIG entries or data files. (data checker)
