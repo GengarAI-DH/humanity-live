@@ -1077,7 +1077,7 @@ function initMeshes(){const lam=(o)=>new THREE.MeshLambertMaterial(o||{});
  const plesio=[new THREE.SphereGeometry(.5,8,6).scale(.02,.01,.034),RX(new THREE.BoxGeometry(.004,.004,.04),-.3).translate(0,.008,.034),B(.006,.005,.008,0,.014,.054),B(.03,.001,.006,0,0,.008),B(.026,.001,.006,0,0,-.01)];
  const fish=[new THREE.SphereGeometry(.5,8,6).scale(.012,.012,.05),B(.001,.016,.008,0,0,-.026),B(.001,.01,.008,0,.008,.002)];
  const MK2=(arr,n)=>mk(mergeG(arr),n);
- WMESH={quad:wildM,thero:MK2(thero,300),sauro:MK2(sauro,200),cera:MK2(cera,160),stego:MK2(stego,120),ankylo:MK2(anky,160),spino:MK2(spino,60),ptero:MK2(ptero,160),plesio:MK2(plesio,80),fish:MK2(fish,120)};
+ try{loadModels()}catch(e){}WMESH={quad:wildM,thero:MK2(thero,300),sauro:MK2(sauro,200),cera:MK2(cera,160),stego:MK2(stego,120),ankylo:MK2(anky,160),spino:MK2(spino,60),ptero:MK2(ptero,160),plesio:MK2(plesio,80),fish:MK2(fish,120)};
  WMESH.swarm=mk(mergeG([B(.003,.002,.003,0,0,0)]),1600);homB=mk(body(),400);homH=mk(new THREE.SphereGeometry(.0046,7,5).translate(0,.0214,0),400);WMESH.hum=homB;WMESH.whale=null;
  droneM=mk(mergeG([B(.014,.002,.002,0,0,0),B(.002,.002,.014,0,0,0),B(.004,.003,.004,0,-.002,0)]),80);for(let i=0;i<80;i++)droneM.instanceColor.setXYZ(i,.92,.93,.95);whaleM=mk(mergeG([new THREE.SphereGeometry(.5,8,6).scale(.025,.016,.1),new THREE.BoxGeometry(.05,.003,.012).translate(0,0,-.055)]),40);
  birdM=mk(mergeG([new THREE.BoxGeometry(.016,.001,.004).rotateZ(.35).translate(-.007,.002,0),new THREE.BoxGeometry(.016,.001,.004).rotateZ(-.35).translate(.007,.002,0)]),120);
@@ -1306,7 +1306,26 @@ function breathe(a,b,T,sc){const D=b[0]+(b[1]-b[0])*((a.ph*7.31)%1),S=4+Math.max
  else{const q=t-D,out=S-q;yy=top;if(q<b[2]*Math.max(b[3],1.5)&&b[5]){const j=Math.floor(q/Math.max(b[3],1.5)),u=q-j*Math.max(b[3],1.5);if(j<b[2]&&u<b[5])bk=u/b[5]}
   if(out<2.5){const r=1-out/2.5;yy=top+(low-top)*ss_(r);p=b[6]?1.1*Math.sin(Math.PI*r):.35*Math.sin(Math.PI*r);act=b[6]?'lifting its flukes to dive deep':'diving'}else act=b[2]>1?'at the surface, blowing':'surfacing for a breath';if(q<1.5)p=-.3*(1-q/1.5)}
  return [yy,p,act,bk]}
-function updWild(dt,T){updDung(T);BLN=0;const cu=cam.t,near=cam.alt<25,cnt={};SWN=0;const CP=camera.position,WL2=(QG.lvl===2||LITE?24:34)**2;
+// ---- detailed animal models: sculpted from published anatomy, loaded only when needed; animated in the shader (legs, tail, head, breathing) ----
+const MODELM={},MCN={},MODELH={},MDL_LIST={veloci:['models/veloci.hlm','/a/veloci.hlm']};let mdlU=null;
+async function loadHLM(urls){for(const u of urls){try{const r=await fetch(u);if(!r.ok)continue;const b=await r.arrayBuffer(),dv=new DataView(b);if(dv.getUint32(0,true)!==0x314d4c48)continue;const hl=dv.getUint32(4,true),H=JSON.parse(new TextDecoder().decode(new Uint8Array(b,8,hl)));let o=8+hl;const part=k=>{const n=H.parts[k],a=o;o+=n+((4-n%4)%4);return[a,n]};
+  const [po]=part(0),[no]=part(1),[uo]=part(2),[io]=part(3),[jo,jn]=part(4),nv=H.nv,P=new Int16Array(b,po,nv*3),pos=new Float32Array(nv*3);
+  for(let i=0;i<nv;i++)for(let c=0;c<3;c++)pos[i*3+c]=H.min[c]+(P[i*3+c]+32768)/65535*(H.max[c]-H.min[c]);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(new Int8Array(b.slice(no,no+nv*3)),3,true));g.setAttribute('uv',new THREE.BufferAttribute(new Uint16Array(b.slice(uo,uo+nv*4)),2,true));g.setIndex(new THREE.BufferAttribute(new Uint16Array(b.slice(io,io+H.ni*2)),1));
+  const img=await createImageBitmap(new Blob([new Uint8Array(b,jo,jn)],{type:'image/jpeg'}),{imageOrientation:'none'});const tex=new THREE.Texture(img);tex.flipY=false;tex.encoding=THREE.sRGBEncoding;tex.needsUpdate=true;return{g,tex,H}}catch(e){console.warn('model',u,e)}}return null}
+function loadModels(){for(const k in MDL_LIST)loadHLM(MDL_LIST[k]).then(m=>{if(!m)return;const n=40,ga=new THREE.InstancedBufferAttribute(new Float32Array(n*2),2);m.g.setAttribute('aGait',ga);
+  const mat=new THREE.MeshLambertMaterial({map:m.tex});mat.onBeforeCompile=sh=>{sh.uniforms.uT=mdlU||(mdlU={value:0});const H=m.H,f=v=>v.toFixed(5);
+   sh.vertexShader='attribute vec2 aGait;uniform float uT;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+   { float ph=aGait.x, mv=aGait.y, hip=${f(H.hipY)}, fz=${f(H.footZ)}, tz=${f(H.tailZ)};
+     float leg=(1.-smoothstep(hip*.55,hip,transformed.y))*(1.-smoothstep(.012,.02,abs(transformed.z-fz)));
+     float sd=transformed.x>0.?0.:3.14159, sw=sin(ph+sd)*min(mv,1.6)*.42*leg;
+     float ry=transformed.y-hip, rz=transformed.z-fz, c=cos(sw), s=sin(sw);
+     transformed.y=hip+ry*c-rz*s; transformed.z=fz+ry*s+rz*c; transformed.y+=max(0.,sin(ph+sd+1.57))*.0016*min(mv,1.6)*leg;
+     float tw=clamp((tz-transformed.z)/.03,0.,1.); transformed.x+=sin(uT*1.6+ph*.5-transformed.z*70.)*.0014*tw*tw*(1.+mv);
+     float hd=smoothstep(.012,.03,transformed.z); transformed.y+=sin(ph*2.)*.0007*min(mv,1.5)*hd;
+     transformed.xy*=1.+sin(uT*1.4+aGait.x)*.012*(1.-min(mv,1.))*(1.-leg); }`)};
+  const M=new THREE.InstancedMesh(m.g,mat,n);M.count=0;M.frustumCulled=false;M.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(M);MODELM[k]=M;MODELH[k]=m.H})}
+function updWild(dt,T){updDung(T);BLN=0;if(mdlU)mdlU.value=T;for(const k in MCN)MCN[k]=0;const cu=cam.t,near=cam.alt<25,cnt={};SWN=0;const CP=camera.position,WL2=(QG.lvl===2||LITE?24:34)**2;
  for(const z of WZ){z.d2=z.o?((z.o[0]-CP.x)**2+(z.o[1]-CP.y)**2+(z.o[2]-CP.z)**2)/WL2:9e9;z.cx+=z.dx*dt*.0015;z.cz+=z.dz*dt*.0015;if(Math.hypot(z.cx,z.cz)>1.2){z.dx=-z.cx;z.dz=-z.cz}if(rnd()<dt*.02){z.dx=rnd()-.5;z.dz=rnd()-.5}}
  const night=z=>z.day<-.06;
  for(const a of WA){const z=a.zo,sp=a.sp,M=WMESH[sp.m];if(!M)continue;if(sp.m!=='whale'&&z.d2>Math.max(1,(sp.s||1)*(sp.sy||1))**2){a.wx=undefined;continue}if(z.N&&z.K[a.type]&&a.idx>=Math.ceil(z.nB[a.type]*z.N[a.type]/z.K[a.type]))continue;const o=z.o,e=z.e,u=z.u,so=z.so;let px,py,pz,fx,fy,fz,sc=sp.s,sy=sp.sy||1;
@@ -1361,7 +1380,7 @@ function updWild(dt,T){updDung(T);BLN=0;const cu=cam.t,near=cam.alt<25,cnt={};SW
    const sh=Math.sin(a.h),ch=Math.cos(a.h);px=o[0]+e[0]*a.x+so[0]*a.zz+u[0]*a.y;py=o[1]+e[1]*a.x+so[1]*a.zz+u[1]*a.y;pz=o[2]+e[2]*a.x+so[2]*a.zz+u[2]*a.y;fx=e[0]*sh+so[0]*ch;fy=e[1]*sh+so[1]*ch;fz=e[2]*sh+so[2]*ch}
   a.wx=px;a.wy=py;a.wz=pz;
   if(sp.m==='hum'){if(HUMN>=homB.instanceMatrix.count)continue;setInst(homB.instanceMatrix.array,HUMN*16,px,py,pz,u[0],u[1],u[2],fx,fy,fz,sc);_c.setHex(sp.c);homB.instanceColor.setXYZ(HUMN,_c.r,_c.g,_c.b);_c.setHex(a.type==='robot'?0xb8c0c8:0x4a3426);homH.instanceColor.setXYZ(HUMN,_c.r,_c.g,_c.b);for(let k=0;k<16;k++)homH.instanceMatrix.array[HUMN*16+k]=homB.instanceMatrix.array[HUMN*16+k];HUMN++;continue}
-  const i=cnt[sp.m]=(cnt[sp.m]||0);if(i>=M.instanceMatrix.count)continue;cnt[sp.m]++;let ux=u[0],uy=u[1],uz=u[2];a.act=a.dead?'dead':a.sleep?'asleep':a.fight>T?(sp.pred?'fighting a rival':'fighting back'):a.hurt>T?(a.eat>T?'eating':'backing off, wounded'):a.ixT>T&&a.ixAct?a.ixAct:a.eat>T?'eating its kill':a.run?'hunting':a.guard>T?'standing its ground':a.flee?'running away':sp.hab==='s'&&a.prey?'hunting':'';if(a.brA)a.act=a.act?a.act+', '+a.brA:a.brA;
+  const MM=MODELM[a.type],useM=!!MM&&(MCN[a.type]||0)<MM.instanceMatrix.count;const i=useM?(MCN[a.type]=(MCN[a.type]||0)):(cnt[sp.m]=(cnt[sp.m]||0));if(useM)MCN[a.type]++;else{if(i>=M.instanceMatrix.count)continue;cnt[sp.m]++}let ux=u[0],uy=u[1],uz=u[2];a.act=a.dead?'dead':a.sleep?'asleep':a.fight>T?(sp.pred?'fighting a rival':'fighting back'):a.hurt>T?(a.eat>T?'eating':'backing off, wounded'):a.ixT>T&&a.ixAct?a.ixAct:a.eat>T?'eating its kill':a.run?'hunting':a.guard>T?'standing its ground':a.flee?'running away':sp.hab==='s'&&a.prey?'hunting':'';if(a.brA)a.act=a.act?a.act+', '+a.brA:a.brA;
   if(sp.hab==='l'){if(a.dead){const fd=Math.min(1,(T-a.deadAt)/1.2)*1.5708,sx_=fy*uz-fz*uy,sy_=fz*ux-fx*uz,sz_=fx*uy-fy*ux,c=Math.cos(fd),s=Math.sin(fd);ux=u[0]*c+sx_*s;uy=u[1]*c+sy_*s;uz=u[2]*c+sz_*s;const k2=Math.max(0,(T-a.deadAt-35)/10);sy*=1-k2*.8}
    else if(a.sleep)sy*=.55;
    else if(a.fight>T){const p=.22*Math.sin(T*9),c=Math.cos(p),s=Math.sin(p),nfx=fx*c-u[0]*s,nfy=fy*c-u[1]*s,nfz=fz*c-u[2]*s;ux=u[0]*c+fx*s;uy=u[1]*c+fy*s;uz=u[2]*c+fz*s;fx=nfx;fy=nfy;fz=nfz}
@@ -1370,10 +1389,10 @@ function updWild(dt,T){updDung(T);BLN=0;const cu=cam.t,near=cam.alt<25,cnt={};SW
   if(a.bk>=0&&sp.hab==='s'&&BLN<24){if(!blowM){blowM=new THREE.InstancedMesh(new THREE.SphereGeometry(.5,8,6).translate(0,.5,0),new THREE.MeshBasicMaterial({color:0xf2f6fa,transparent:true,opacity:.5,depthWrite:false,}),24);blowM.frustumCulled=false;blowM.count=0;scene.add(blowM)}
    const k=a.bk,h=a.bh*Math.min(1,k*4)*(k>.7?1-(k-.7)/.3*.5:1),w=a.bh*(a.type==='bluewhale'?.18:.4)*(.4+k)*(k>.7?1-(k-.7)/.3:1)+1e-4,hx=px+fx*.042*sc+u[0]*.006*sc,hy=py+fy*.042*sc+u[1]*.006*sc,hz=pz+fz*.042*sc+u[2]*.006*sc;
    setInst(blowM.instanceMatrix.array,BLN*16,hx,hy,hz,u[0],u[1],u[2],e[0],e[1],e[2],w,h/w);BLN++}
-  setInst(M.instanceMatrix.array,i*16,px,py,pz,ux,uy,uz,fx,fy,fz,sc,sy)}
+  if(useM){setInst(MM.instanceMatrix.array,i*16,px,py,pz,ux,uy,uz,fx,fy,fz,sc,sy);const mv=a.dead||a.sleep?0:(a.run||a.flee||a.fireRun>T)?2:Math.hypot(a.tx-a.x,a.tz-a.zz)>.003&&!(a.w>0)?1:0;a.gp=(a.gp||a.ph*6.28||0)+dt*(mv===2?11:mv===1?6:0);MM.geometry.attributes.aGait.setXY(i,a.gp,mv)}else setInst(M.instanceMatrix.array,i*16,px,py,pz,ux,uy,uz,fx,fy,fz,sc,sy)}
  if(blowM){blowM.count=BLN;blowM.instanceMatrix.needsUpdate=true}
  for(const k in WMESH){if(k==='hum'||k==='swarm')continue;WMESH[k].count=cnt[k]||0;WMESH[k].instanceMatrix.needsUpdate=true}WMESH.swarm.count=SWN;WMESH.swarm.instanceMatrix.needsUpdate=WMESH.swarm.instanceColor.needsUpdate=true;
- homB.count=homH.count=HUMN;homB.instanceMatrix.needsUpdate=homH.instanceMatrix.needsUpdate=homB.instanceColor.needsUpdate=homH.instanceColor.needsUpdate=true;
+ for(const k in MODELM){const MM=MODELM[k];MM.count=MCN[k]||0;MM.instanceMatrix.needsUpdate=true;MM.geometry.attributes.aGait.needsUpdate=true}homB.count=homH.count=HUMN;homB.instanceMatrix.needsUpdate=homH.instanceMatrix.needsUpdate=homB.instanceColor.needsUpdate=homH.instanceColor.needsUpdate=true;
  const ba=birdM.instanceMatrix.array,da=droneM.instanceMatrix.array;let nb=0,nd=0;BIRDL=[];
  if(cam.alt<12){const spots=[...WZ.filter(z=>z.type!=='ocean'&&!z.water&&(simY>-66e6)),...S.filter(s=>s.built)].filter(z=>z.U&&z.U.angleTo(cu)<.05).slice(0,6);
   for(const z of spots){const id=(z.k?z.i+100:z.i),isS=!!z.k,drones=isS&&z.tier>=8;const o=z.o,e=z.e,u=z.u,so=z.so;

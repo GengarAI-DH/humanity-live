@@ -48,3 +48,6 @@ All of these need `python3 build.py` first (they load `tools/test.html`) and run
 
 ## Annoyance check
 `python3 tools/annoy.py` (after build.py) counts automatic popups per minute at ground level in three eras and fails above 3 a minute. Run it before shipping anything that shows messages.
+
+## Detailed animal models (.hlm)
+A detailed model replaces an animal's simple shape up close. Format: "HLM1", header length, JSON header (vertex count, index count, bounding box, hip height, foot and tail positions, source), then int16 positions, int8 normals, uint16 UVs, uint16 indices and a JPEG texture. Models live in the worker's IMPORTS key-value store as file:<name> and are served at /a/<name>; to add one, upload the file to the Higgsfield file host and queue a job {"url": "...", "keep": "<name>.hlm"} (only that host is allowed, and only for kept files). Add the species key and file to MDL_LIST in tpl.html. If the file can't load, the old shape is used.
