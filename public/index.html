@@ -84,6 +84,16 @@ body.stream #dock,body.stream #rot,body.stream #pills,body.stream #place,body.st
 .card .q{position:absolute;top:4px;right:6px;font:800 11px Archivo;background:rgba(0,0,0,.5);border-radius:8px;padding:1px 5px}
 .card.no{filter:grayscale(1) brightness(.45)}.card.no .e{opacity:.35}
 .card.r5{box-shadow:0 0 14px #f59e0b88}.card.r4{box-shadow:0 0 10px #a855f766}
+.card.half .e{opacity:.55}
+.card.done{box-shadow:0 0 0 2px #f5c542,0 0 14px #f5c54288}
+.card .ck{position:absolute;right:6px;bottom:4px;font:800 11px Archivo;color:#f5c542}
+.cqs{margin:10px 0 0;padding:8px 10px;border-radius:10px;background:#ffffff14;color:#e8e2d6;font-size:13px}
+.cqs.ok{background:#f5c54226;color:#f5c542;font-weight:700}
+.cquiz{background:#16110d;border:1px solid #ffffff22;border-radius:16px;padding:16px;text-align:left;color:#eee}
+.cquiz h3{margin:8px 0 12px;font:700 17px Archivo;color:#fff}
+.cquiz .qa{display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px;border-radius:10px;background:#ffffff12;color:#eee;border:1px solid #ffffff22;font-size:14px}
+.cquiz .qa.ok{background:#2e7d3240;border-color:#4caf50}
+.cquiz .qa.bad{background:#c6282840;border-color:#ef5350}
 .csec{display:flex;justify-content:space-between;align-items:center;margin-top:10px;cursor:pointer}.csec b{font:700 15px Archivo}
 #cardBig{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:20px}#cardBig.on{display:flex}
 #cardBig .inner{width:min(320px,86vw);text-align:center}#cardBig .card{cursor:default;aspect-ratio:5/7;padding:14px;font-size:14px}#cardBig .card .e{font-size:76px}#cardBig .card .n{font-size:20px}#cardBig .card .r{font-size:12px}
@@ -443,13 +453,16 @@ function applyClimate(Y,force){
   if(w){T2[k*3]=r/w;T2[k*3+1]=g/w;T2[k*3+2]=b/w}}LC.set(T2)}
  const img=tctx.createImageData(TW,TH),D=img.data,simg=sctx.createImageData(1024,512),SD=simg.data;
  const sx=GW/TW,sy=GH/TH;
+ // deep time: the reconstructed coastlines are coarse (half-degree cells), so soften the elevation field and add natural, fractal
+ // coastline detail at several scales instead of square-edged islands (today's coastlines keep the measured elevation)
+ let ES=EC;if(paleo){ES=new Float32Array(EC.length);for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){let t=0,w=0;for(let dj=-1;dj<=1;dj++){const jj=clamp(j+dj,0,GH-1);for(let di=-1;di<=1;di++){const ww=(dj?1:2)*(di?1:2);t+=EC[jj*GW+(i+di+GW)%GW]*ww;w+=ww}}ES[j*GW+i]=EC[j*GW+i]*.45+t/w*.55}}
  for(let y=0;y<TH;y++){const gy=y*sy+sy/2-.5,j0=clamp(Math.floor(gy),0,GH-1),j1=Math.min(GH-1,j0+1),fy=clamp(gy-j0,0,1);
   for(let x=0;x<TW;x++){const gx=x*sx+sx/2-.5,i0f=Math.floor(gx),fx=gx-i0f,i0=(i0f+GW)%GW,i1=(i0+1)%GW;
    const a=j0*GW+i0,b=j0*GW+i1,c=j1*GW+i0,d=j1*GW+i1,w0=(1-fx)*(1-fy),w1=fx*(1-fy),w2=(1-fx)*fy,w3=fx*fy;
-   const eb=EC[a]*w0+EC[b]*w1+EC[c]*w2+EC[d]*w3,e=eb+(hash(x,y)-.5)*.012+(vn(x/6,y/6)-.5)*.05;
+   const eb=ES[a]*w0+ES[b]*w1+ES[c]*w2+ES[d]*w3,e=eb+(hash(x,y)-.5)*.012+(vn(x/6,y/6)-.5)*.05+(paleo?(vn(x/17+40,y/17)-.5)*.07+(vn(x/2.6,y/2.6)-.5)*.025:0);
    const land=e>-sea,C=land?LC:OC,p=(y*TW+x)*4;RELF[y*TW+x]=land?Math.max(eb,0)+(vn(x/3,y/3)-.5)*.02*Math.min(1,eb*2):-1;
    D[p]=C[a*3]*w0+C[b*3]*w1+C[c*3]*w2+C[d*3]*w3;D[p+1]=C[a*3+1]*w0+C[b*3+1]*w1+C[c*3+1]*w2+C[d*3+1]*w3;D[p+2]=C[a*3+2]*w0+C[b*3+2]*w1+C[c*3+2]*w2+C[d*3+2]*w3;D[p+3]=255;
-   if(!(x&1)&&!(y&1)){const q=((y>>1)*1024+(x>>1))*4,v=land?10:(D[p]>200?30:110);SD[q]=SD[q+1]=SD[q+2]=v;SD[q+3]=255}}}
+   if(!(x&1)&&!(y&1)){const q=((y>>1)*1024+(x>>1))*4,v=land?8:(D[p]>200?30:100);SD[q]=SD[q+1]=SD[q+2]=v;SD[q+3]=255}}}
  // snow line by latitude (about 5 km near the equator, 3 km in the Alps, 1.5 km in Norway), lower in winter and ice ages, higher as it warms
  for(let y=0;y<TH;y++){const lat=90-(y+.5)/TH*180,al=Math.abs(lat),w=lat>0?SEAS:-SEAS;const sb=Math.exp(-(al-31)*(al-31)/72);SNL[y]=Math.max(.15,5.0-Math.max(0,al-22)*.105+1.3*sb-(w>0?.75*w:.35*w)*(1-.6*sb)-(CLIM.ice||0)*1.1+(CLIM.w||0)*.5)}
  // shaded relief: light from the north-west so mountains, ridges and valleys stand out at every height
@@ -459,6 +472,10 @@ function applyClimate(Y,force){
   const hl=RELF[xl]<0?h:RELF[xl],hr=RELF[xr]<0?h:RELF[xr],hu=RELF[k-TW]<0?h:RELF[k-TW],hd=RELF[k+TW]<0?h:RELF[k+TW];
   const gx=(hr-hl)/cl,gy=hd-hu,s=clamp(1+(-gx*.7-gy*.7)*-RELK+h*.04,.66,1.38),p=k*4;
   const hr0=RELR[k];if(hr0>.45){const km=(hr0-.1)/.27*.92+Math.max(0,hr0-h)/.27*2.2,sf=clamp((km-SNL[y])/.4+(vn(x/2.5,y/2.5)-.5)*.9,0,1)*.92;if(sf>0){D[p]=lerp(D[p],242,sf);D[p+1]=lerp(D[p+1],245,sf);D[p+2]=lerp(D[p+2],250,sf)}}D[p]=Math.min(255,D[p]*s);D[p+1]=Math.min(255,D[p+1]*s);D[p+2]=Math.min(255,D[p+2]*s)}}
+ // recent millennia: land colours from NASA's Blue Marble: Next Generation satellite mosaic (public domain), blended over the climate model;
+ // seasonal snow in the mosaic is left to the model, which puts snow where and when it really falls
+ {const wb=BMD&&!paleo?clamp((Y+4000)/2000,0,1)*.82:0;if(wb>0){for(let y=0;y<TH;y++)for(let x=0;x<TW;x++){const k=y*TW+x,p=k*4,r=BMD[p],g=BMD[p+1],b=BMD[p+2];const wat=b>r+12||(b>25&&r<30&&g<b+20);if(RELF[k]<0){if(wat){D[p]=D[p]*(1-wb)+r*wb;D[p+1]=D[p+1]*(1-wb)+g*wb;D[p+2]=D[p+2]*(1-wb)+b*wb}continue}const mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(!wat&&mx>185&&mx-mn<40)continue;
+  const w2=wat?1:wb;D[p]=D[p]*(1-w2)+r*w2;D[p+1]=D[p+1]*(1-w2)+g*w2;D[p+2]=D[p+2]*(1-w2)+b*w2}}}
  tctx.putImageData(img,0,0);sctx.putImageData(simg,0,0);
  if(!paleo){tctx.strokeStyle='rgba(58,112,150,.95)';tctx.lineCap=tctx.lineJoin='round';
   {const gk=clamp((simY+5.5e6)/(3.5e6),0,1);if(gk>0&&simY>-6e6){const GC=[[36.87,-111.6],[36.6,-111.85],[36.25,-111.95],[36.1,-112.1],[36.2,-112.6],[36.3,-113.1],[36.05,-113.8]];tctx.strokeStyle=`rgba(120,52,30,${.4+.5*gk})`;tctx.lineWidth=1+gk*3.5;tctx.beginPath();GC.forEach((p,i)=>{const X=(p[1]+180)/360*TW,Yp=(90-p[0])/180*TH;i?tctx.lineTo(X,Yp):tctx.moveTo(X,Yp)});tctx.stroke();tctx.strokeStyle='rgba(58,112,150,.95)'}}
@@ -556,7 +573,8 @@ function makeGlobe(){
  const uv=globeGeo.attributes.uv.array,n=uv.length/2;DIRS=new Float32Array(n*3);
  for(let i=0;i<n;i++){const lon=uv[i*2]*360-180,lat=uv[i*2+1]*180-90,v=v3(lat,lon,1);DIRS[i*3]=v.x;DIRS[i*3+1]=v.y;DIRS[i*3+2]=v.z}
  updGlobeHeights();
- const gm=new THREE.MeshPhongMaterial({map:globeTex,specularMap:specTex,specular:0x26303c,shininess:30});
+ // water is a mirror for the sun: a sharp, bright glint on open water only (the specular map is dark on land and sea ice)
+ const gm=new THREE.MeshPhongMaterial({map:globeTex,specularMap:specTex,specular:0x262c34,shininess:150});
  // close-up ground detail: a fine tiling grain on land that fades in as the camera gets low, so the ground stays crisp instead of blurry
  const DT=detailTex();gm.onBeforeCompile=sh=>{sh.uniforms.detailMap={value:DT};sh.fragmentShader='uniform sampler2D detailMap;\n'+sh.fragmentShader.replace('#include <specularmap_fragment>',`#include <specularmap_fragment>
   { float land=1.-smoothstep(.12,.3,specularStrength); float dist=length(vViewPosition);
@@ -567,13 +585,25 @@ function makeGlobe(){
  globe=new THREE.Mesh(globeGeo,gm);scene.add(globe);
  seaWater=new THREE.Mesh(new THREE.SphereGeometry(R-.01,256,128),new THREE.MeshPhongMaterial({color:0x1d5486,transparent:true,opacity:.32,specular:0x44556a,shininess:70,depthWrite:false}));seaWater.renderOrder=1;seaWater.visible=SEAFLOOR;scene.add(seaWater);
  // atmosphere
- const atm=new THREE.Mesh(new THREE.SphereGeometry(R*1.03,96,48),new THREE.ShaderMaterial({transparent:true,side:THREE.BackSide,depthWrite:false,blending:THREE.AdditiveBlending,
-  vertexShader:'varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-  fragmentShader:'varying vec3 vN;void main(){float i=pow(clamp(.72-dot(vN,vec3(0,0,1.)),0.,1.),3.);gl_FragColor=vec4(.35,.6,1.,1.)*i*1.4;}'}));
+ // Light scatters in the air: short (blue) wavelengths scatter most, so the sunlit limb glows blue; where sunlight crosses the long path
+ // through the air at the terminator, blue is scattered away and the light left is orange-red; the night side has only faint airglow.
+ const ATMU={uSun:{value:new THREE.Vector3(1,0,0)},uCam:{value:new THREE.Vector3()},uAlt:{value:1}};
+ const atm=new THREE.Mesh(new THREE.SphereGeometry(R*1.03,96,48),new THREE.ShaderMaterial({uniforms:ATMU,transparent:true,side:THREE.BackSide,depthWrite:false,blending:THREE.AdditiveBlending,
+  vertexShader:'varying vec3 vN;varying vec3 vW;void main(){vN=normalize(normalMatrix*normal);vW=normalize((modelMatrix*vec4(position,1.)).xyz);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 uSun;varying vec3 vN;varying vec3 vW;void main(){float i=pow(clamp(.72-dot(vN,vec3(0,0,1.)),0.,1.),3.);float s=dot(vW,uSun);float day=smoothstep(-.3,.3,s);float tw=exp(-pow((s+.06)/.17,2.));vec3 c=mix(vec3(.30,.56,1.),vec3(1.,.48,.18),tw*.8)*(day*1.35+tw*.55)+vec3(.015,.02,.045);gl_FragColor=vec4(c*i*1.45,1.);}'}));
  scene.add(atm);
+ // horizon haze over the surface: the thicker air seen edge-on near the limb looks pale blue in daylight (fades out close to the ground)
+ const haze=new THREE.Mesh(new THREE.SphereGeometry(R*1.004,128,64),new THREE.ShaderMaterial({uniforms:ATMU,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+  vertexShader:'varying vec3 vW;void main(){vW=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 uSun;uniform vec3 uCam;uniform float uAlt;varying vec3 vW;void main(){vec3 n=normalize(vW),v=normalize(uCam-vW);float f=pow(1.-max(dot(n,v),0.),3.5);float s=dot(n,uSun);float day=smoothstep(-.15,.35,s);float tw=exp(-pow((s+.02)/.16,2.));vec3 c=mix(vec3(.42,.62,1.),vec3(1.,.55,.3),tw*.7);gl_FragColor=vec4(c*f*(day*.55+tw*.25)*uAlt,1.);}'}));
+ haze.renderOrder=2;scene.add(haze);window.__ATMU=ATMU;
  // clouds
  const cc=document.createElement('canvas');cc.width=1024;cc.height=512;const cx=cc.getContext('2d'),ci=cx.createImageData(1024,512);
- for(let y=0;y<512;y++)for(let x=0;x<1024;x++){const lat=90-y/512*180,band=1-Math.abs(Math.abs(lat)-50)/90;let v=fbm(x/60,y/60)*.7+fbm(x/18,y/18)*.4+band*.15-.62;const p=(y*1024+x)*4;ci.data[p]=ci.data[p+1]=ci.data[p+2]=255;ci.data[p+3]=clamp(v*600,0,230)}
+ // mean cloud cover by latitude follows the real belts (NASA MODIS/ISCCP climatology): a cloudy band at the Intertropical Convergence Zone
+ // (~5°N), clear subtropical highs (15–30°, where the big deserts are), cloudy mid-latitude storm tracks (45–65°, cloudiest over the Southern Ocean),
+ // and fewer clouds over the poles; mid-latitude clouds are stretched east-west along the westerlies
+ const G_=(x,m,w)=>Math.exp(-(((x-m)/w)**2)),CB=lat=>.22+.42*G_(lat,5,7)-.17*G_(Math.abs(lat),23,8)+.34*G_(Math.abs(lat),55,11)*(lat<0?1.15:1)-.12*clamp((Math.abs(lat)-72)/12,0,1);
+ for(let y=0;y<512;y++)for(let x=0;x<1024;x++){const lat=90-y/512*180,ml=clamp((Math.abs(lat)-30)/20,0,1),sx_=1+ml*1.8;let v=fbm(x/(60*sx_),y/52)*.7+fbm(x/(18*sx_),y/16)*.4+(CB(lat)-.4)*.9-.6;const p=(y*1024+x)*4;ci.data[p]=ci.data[p+1]=ci.data[p+2]=255;ci.data[p+3]=clamp(v*600,0,230)}
  cx.putImageData(ci,0,0);
  clouds=new THREE.Mesh(new THREE.SphereGeometry(R+3.2,128,64),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cc),transparent:true,depthWrite:false,opacity:.5}));scene.add(clouds);
  // cloud formations drift with the real wind belts (trade winds blow west in the tropics, westerlies blow east in mid-latitudes) and slowly form and break up (flow-map blend of two drifting copies)
@@ -1949,8 +1979,10 @@ let borderL=null;
 async function loadBorders(){try{const r=await fetch('borders.json');if(!r.ok)return;const L=await r.json(),pts=[];for(const c of L)for(const ring of c[2])for(let i=0;i<ring.length-1;i++){const a=ring[i],b=ring[i+1];if(Math.abs(a[0]-b[0])>90)continue;for(const p of[a,b]){const v=v3(p[1],p[0],R+Math.max(0,hAt(p[1],p[0]))+.03);pts.push(v.x,v.y,v.z)}}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pts),3));borderL=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.35,depthWrite:false}));borderL.frustumCulled=false;scene.add(borderL)}catch(e){}}
 async function loadIce(){try{const r=await fetch('ice.json');if(!r.ok)return;const d=await r.json(),b=atob(d.rle),g=new Uint8Array(GW*GH);let o=0;for(let i=0;i+1<b.length;i+=2){const v=b.charCodeAt(i),n=b.charCodeAt(i+1);g.fill(v,o,o+n);o+=n}if(o!==GW*GH)return;ICEG=g;if(simY>-3e6&&simY<-5000){CLIM.sig=null;applyClimate(simY,true)}}catch(e){}}
-let WATER=null;async function loadWater(){try{const r=await fetch('water.json');if(!r.ok)return;WATER=await r.json();CLIM.sig=null;applyClimate(simY,true)}catch(e){}}
-async function loadCities(){loadBorders();loadWater();loadIce();loadQuakes();loadSpecies();loadJourneys();loadInventions();loadLandforms();loadDeepTime();loadWonders();loadExtinctions();loadStorms();loadBattles();loadMigrations();loadSky();loadWrecks();if(simY>-12000)loadHeritage();if(simY>1850)loadTall();try{const r=await fetch('cities.json');if(!r.ok)return;const L=await r.json();const n=L.length;
+let WATER=null;let BMD=null;async function loadBlueMarble(){if(BMD||simY<-6000)return;try{const r=await fetch('tex/bluemarble.jpg');if(!r.ok)return;const bm=await createImageBitmap(await r.blob());const c=document.createElement('canvas');c.width=TW;c.height=TH;const x=c.getContext('2d');x.drawImage(bm,0,0,TW,TH);BMD=x.getImageData(0,0,TW,TH).data;CLIM.sig=null;applyClimate(simY,true)}catch(e){}}
+setInterval(()=>{if(!BMD&&simY>-6000)loadBlueMarble()},15000);
+async function loadWater(){try{const r=await fetch('water.json');if(!r.ok)return;WATER=await r.json();CLIM.sig=null;applyClimate(simY,true)}catch(e){}}
+async function loadCities(){loadBorders();loadBlueMarble();loadWater();loadIce();loadQuakes();loadSpecies();loadJourneys();loadInventions();loadLandforms();loadDeepTime();loadWonders();loadExtinctions();loadStorms();loadBattles();loadMigrations();loadSky();loadWrecks();if(simY>-12000)loadHeritage();if(simY>1850)loadTall();try{const r=await fetch('cities.json');if(!r.ok)return;const L=await r.json();const n=L.length;
  CITY={n,name:L.map(x=>x[0]),lat:new Float32Array(n),lon:new Float32Array(n),pop:new Float64Array(n),cc:L.map(x=>x[4]),ct:[],gate:new Float32Array(n),fy:new Float32Array(n).fill(NaN),fr:new Uint8Array(n),U:new Float32Array(n*3)};
  const pos=new Float32Array(n*3),col=new Float32Array(n*3);
  L.forEach((x,i)=>{CITY.lat[i]=x[1];CITY.lon[i]=x[2];CITY.pop[i]=x[3];const ct=CC[x[4]]?CC[x[4]].ct:'';CITY.ct[i]=ct;CITY.gate[i]=cityGate(x[4],ct);if(typeof x[5]==='number'){CITY.fy[i]=x[5];CITY.fr[i]=x[6]?1:0;CITY.gate[i]=x[5]}const v=v3(x[1],x[2],1);CITY.U[i*3]=v.x;CITY.U[i*3+1]=v.y;CITY.U[i*3+2]=v.z;const r=R+Math.max(0,hAt(x[1],x[2]))+.03;pos[i*3]=v.x*r;pos[i*3+1]=v.y*r;pos[i*3+2]=v.z*r});
@@ -2739,12 +2771,13 @@ const C_NE=[[/turtle|tortoise|stupendemys/i,'🐢'],[/croc|caiman|gharial|alliga
 const cEmo=c=>{if(c[2]==='an'){for(const [r,e] of C_NE)if(r.test(c[3]))return e}return C_E[c[2]](c[8])};
 const cSn=s=>s>=1e6?(s/1e6).toFixed(1)+'M':s>=1e4?Math.round(s/1e3)+'K':s.toLocaleString('en-US');
 function cSer(cid){const a=CME&&CME.ser&&CME.ser[cid];return a&&a.length?a[0]:0}
-function cTile(c,n,dl){const s=cSeason(c[1]),sn=n?cSer(c[0]):0;return`<div class="card r${c[4]}${n?'':' no'}${dl!=null?' flip':''}" data-cid="${c[0]}" style="--rc:${C_RC[c[4]]};--sc:${s[5]}${dl!=null?';animation-delay:'+dl+'s':''}">${n>1?`<span class="q">×${n}</span>`:''}${sn?`<span class="sn">#${cSn(sn)}</span>`:''}<div class="e">${cEmo(c)}</div><div><div class="n">${esc(c[3])}</div><div class="r">${C_RN[c[4]]}</div></div></div>`}
-function cBig(cid){const c=CARDS.by[cid];if(!c)return;const s=cSeason(c[1]),n=(CME&&CME.cards[cid])||0,yr=c[5]<-1e6?(-c[5]/1e6).toFixed(1)+' million years ago':c[5]<-9999?Math.round(-c[5]).toLocaleString('en-US')+' years ago':c[5]<0?-c[5]+' BC':c[5]+'';
+function cTile(c,n,dl){const s=cSeason(c[1]),sn=n?cSer(c[0]):0,st=n?cState(c[0]):'';return`<div class="card r${c[4]}${n?'':' no'}${st==='done'?' done':st?' half':''}${dl!=null?' flip':''}" data-cid="${c[0]}" style="--rc:${C_RC[c[4]]};--sc:${s[5]}${dl!=null?';animation-delay:'+dl+'s':''}">${n>1?`<span class="q">×${n}</span>`:''}${sn?`<span class="sn">#${cSn(sn)}</span>`:''}${st==='done'?'<span class="ck">✓</span>':st==='quiz'?'<span class="ck">?</span>':''}<div class="e">${cEmo(c)}</div><div><div class="n">${esc(c[3])}</div><div class="r">${C_RN[c[4]]}</div></div></div>`}
+function cBig(cid){const c=CARDS.by[cid];if(!c)return;const s=cSeason(c[1]),n=(CME&&CME.cards[cid])||0,st=n?cState(cid):'none',yr=c[5]<-1e6?(-c[5]/1e6).toFixed(1)+' million years ago':c[5]<-9999?Math.round(-c[5]).toLocaleString('en-US')+' years ago':c[5]<0?-c[5]+' BC':c[5]+'';
+ const quest=st==='done'?'<div class="cqs ok">✓ Card complete</div>':st==='quiz'?'<div class="cqs">Found! Answer its questions to finish this card.</div>':st==='find'?`<div class="cqs">Half a card: ${cFindHint(c)}</div>`:'';
  const how=c[2]==='ev'?'Earned only by watching this event live.':['an','pl'].includes(c[2])?'Spot it: tap one in the world while its season is on, or find it in a pack.':'Found in packs while its season is on.';
- $('cardBig').querySelector('.inner').innerHTML=`<div class="card r${c[4]} flip" style="--rc:${C_RC[c[4]]};--sc:${s[5]}"><div class="r" style="text-align:left">${s[4]} ${esc(s[1])} · ${C_K[c[2]]}</div><div class="e">${cEmo(c)}</div><div><div class="n">${esc(c[3])}</div><div class="r">${C_RN[c[4]]} · ${yr}</div><div class="f">${esc(c[6]||'')}</div><div class="f" style="opacity:.7;margin-top:6px">${how}</div></div></div>
- <div class="btns">${n?`<span class="sm">You have ${n} · serial ${CME.ser[cid].map(x=>'#'+x.toLocaleString('en-US')).join(', ')} of 71,250,000 · ${(CME.minted[cid]||n).toLocaleString('en-US')} found by everyone so far</span>`:'<span class="sm">Not collected yet</span>'}<a href="https://en.wikipedia.org/wiki/${encodeURIComponent(c[7])}" target="_blank" rel="noopener">Wikipedia ↗</a>${n&&CME.signedIn?`<button id="cbTrade">Offer in a trade</button>`:''}</div>`;
- $('cardBig').classList.add('on');const tb=$('cbTrade');if(tb)tb.onclick=()=>{$('cardBig').classList.remove('on');cTab='trade';cDraw(cid)}}
+ $('cardBig').querySelector('.inner').innerHTML=`<div class="card r${c[4]} flip" style="--rc:${C_RC[c[4]]};--sc:${s[5]}"><div class="r" style="text-align:left">${s[4]} ${esc(s[1])} · ${C_K[c[2]]}</div><div class="e">${cEmo(c)}</div><div><div class="n">${esc(c[3])}</div><div class="r">${C_RN[c[4]]} · ${yr}</div><div class="f">${esc(c[6]||'')}</div><div class="f" style="opacity:.7;margin-top:6px">${how}</div></div></div>${quest}
+ <div class="btns">${st==='quiz'?'<button class="go" id="cbQuiz">Answer the questions</button>':''}${n?`<span class="sm">You have ${n} · serial ${CME.ser[cid].map(x=>'#'+x.toLocaleString('en-US')).join(', ')} of 71,250,000 · ${(CME.minted[cid]||n).toLocaleString('en-US')} found by everyone so far</span>`:'<span class="sm">Not collected yet</span>'}<a href="https://en.wikipedia.org/wiki/${encodeURIComponent(c[7])}" target="_blank" rel="noopener">Wikipedia ↗</a>${n&&CME.signedIn?`<button id="cbTrade">Offer in a trade</button>`:''}</div>`;
+ $('cardBig').classList.add('on');const qb=$('cbQuiz');if(qb)qb.onclick=()=>cQuiz(cid);const tb=$('cbTrade');if(tb)tb.onclick=()=>{$('cardBig').classList.remove('on');cTab='trade';cDraw(cid)}}
 function cPack(got,title){const o=$('cardBig').querySelector('.inner');o.innerHTML=`<div class="n" style="font:800 20px Archivo;color:#fff;margin-bottom:10px">${esc(title)}</div><div class="cgrid" style="grid-template-columns:repeat(${Math.min(3,got.length)},1fr)">${got.map((id,i)=>{const c=CARDS.by[id];return c?cTile(c,1,i*.45):''}).join('')}</div><div class="btns"><button onclick="document.getElementById('cardBig').classList.remove('on')">Add to album</button></div>`;$('cardBig').classList.add('on');
  o.querySelectorAll('.card').forEach(el=>el.onclick=()=>cBig(el.dataset.cid));sfx&&sfx('pop')}
 function sfx(){}
@@ -2792,12 +2825,33 @@ function cDraw(preGive){if(!CARDS||!CME){$('cardsBody').innerHTML='<h2>Trading c
   if($('gBtn'))gsiButton($('gBtn'))}}
 function gsiButton(el){const go=()=>{google.accounts.id.initialize({client_id:CINFO.googleClient,callback:async res=>{const r=await cApi('google',{cred:res.credential});if(r.ok){CME=r;toast('Signed in. Your cards are safe.');cDraw()}else toast(esc(r.error||'Sign-in failed'))}});google.accounts.id.renderButton(el,{theme:'filled_black',size:'large',shape:'pill',text:'signin_with'})};
  if(window.google&&google.accounts)return go();if(GSI)return;GSI=true;const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.onload=go;document.head.appendChild(s)}
+// ---- finishing a card: the pack gives half; find the real thing in the world, then answer its questions ----
+let CFOUND={};try{CFOUND=JSON.parse(LS.get('hl_cfound')||'{}')||{}}catch(e){}
+function cSaveFound(){LS.set('hl_cfound',JSON.stringify(CFOUND))}
+let cNameIx=null;const CQZ={};
+function cByName(t){if(!CARDS||!CME)return null;if(!cNameIx){cNameIx={};for(const c of CARDS.cards)for(const k of new Set([c[3],c[7]]))if(k)(cNameIx[k]=cNameIx[k]||[]).push(c[0])}const L=cNameIx[t];if(!L)return null;return L.find(id=>CME.cards[id]&&!CME.done?.[id])||null}
+// plants can't be tapped one by one yet, and an era that has ended can't be visited until open time travel, so those go straight to the questions
+function cState(cid){if(!CME||!CME.cards[cid])return 'none';if(CME.done&&CME.done[cid])return 'done';const c=CARDS.by[cid];if(CFOUND[cid]||c[2]==='pl'||c[1]!==cSeasonNow()[0])return 'quiz';return 'find'}
+function cFindHint(c){return c[2]==='an'?`find a living ${esc(c[3])} in the world and tap it.`:c[2]==='ev'?'be watching when it happens, or open it in the timeline.':'find it in the world or the timeline and open its info card.'}
+function cardFound(cid){if(!CARDS||!CME||cState(cid)!=='find')return;CFOUND[cid]=1;cSaveFound();$('cDot').classList.add('on');if(LS.get('hl_cpop')==='0')return;const c=CARDS.by[cid];toast(`🔎 You found <b>${esc(c[3])}</b>! Answer its questions to finish the card.<br><span class="sm">Tap to start</span>`,5000,()=>cQuiz(cid))}
+async function cQuiz(cid){const c=CARDS.by[cid];if(!c||cState(cid)!=='quiz')return cBig(cid);
+ const wait=+(LS.get('hl_cqw_'+cid)||0)-Date.now();if(wait>0){toast(`Try ${esc(c[3])} again in ${Math.ceil(wait/60000)} min`);return}
+ let Q=CQZ[c[1]];if(!Q){try{Q=CQZ[c[1]]=await (await fetch('quiz/'+c[1]+'.json')).json()}catch(e){toast('Questions are unavailable right now');return}}
+ const fin=async()=>{const r=await cApi('done',{cid});if(r.ok){CME=r;toast(`🏅 <b>${esc(c[3])}</b> card complete!`);cBig(cid);try{cDraw()}catch(e){}}else toast(esc(r.error||'Try again'))};
+ const qs=Q[cid];if(!qs||!qs.length)return fin();
+ const o=$('cardBig').querySelector('.inner');let i=0;
+ const step=()=>{const q=qs[i];o.innerHTML=`<div class="cquiz"><div class="sm">${cEmo(c)} ${esc(c[3])} · question ${i+1} of ${qs.length}</div><h3>${esc(q[0])}</h3>${q[1].map((a,j)=>`<button class="qa" data-j="${j}">${esc(a)}</button>`).join('')}<div class="btns"><button id="cqX">Close</button></div></div>`;$('cardBig').classList.add('on');
+  $('cqX').onclick=()=>$('cardBig').classList.remove('on');
+  o.querySelectorAll('.qa').forEach(b=>b.onclick=()=>{const j=+b.dataset.j;o.querySelectorAll('.qa').forEach(x=>{x.disabled=true;if(+x.dataset.j===q[2])x.classList.add('ok')});
+   if(j!==q[2]){b.classList.add('bad');LS.set('hl_cqw_'+cid,String(Date.now()+5*60000));o.querySelector('.btns').insertAdjacentHTML('afterbegin','<div class="sm" style="width:100%">Not quite. The right answer is in green. You can try this card again in 5 minutes.</div>');return}
+   i++;setTimeout(()=>i<qs.length?step():fin(),650)})};
+ step()}
 // earning: spotting animals, and being there when an event happens
-let cSpotT=0;async function cardSpot(type){if(!LIVE||!CARDS||!CME||!CME.spotsLeft||performance.now()-cSpotT<4000)return;const se=cSeasonNow()[0],cid='an-'+cslug(type)+'-'+se;if(!CARDS.by[cid]||CME.cards[cid])return;cSpotT=performance.now();
+let cSpotT=0;async function cardSpot(type){try{if(CARDS&&CME){const id='an-'+cslug(type)+'-'+cSeasonNow()[0];if(CARDS.by[id])cardFound(id)}}catch(e){}if(!LIVE||!CARDS||!CME||!CME.spotsLeft||performance.now()-cSpotT<4000)return;const se=cSeasonNow()[0],cid='an-'+cslug(type)+'-'+se;if(!CARDS.by[cid]||CME.cards[cid])return;cSpotT=performance.now();
  const r=await cApi('spot',{cid});if(r.ok){CME=r;if(r.got&&r.got.length)cNote(r.got[0],'You spotted a card')}}
 function cNote(cid,what){$('cDot').classList.add('on');if(LS.get('hl_cpop')==='0')return;const c=CARDS.by[cid];if(!c)return;toast(`🃏 ${what}: <b>${esc(c[3])}</b> · ${C_RN[c[4]]} #${cSer(cid).toLocaleString('en-US')}<br><span class="sm">Tap to see it</span>`,4000,()=>cBig(cid))}
 async function cardWitness(title){if(!LIVE)return;if(!CARDS)await cLoad();if(!CARDS)return;const cid='ev-'+cslug(title);if(!CARDS.by[cid]||(CME&&CME.cards[cid]))return;
- setTimeout(async()=>{const r=await cApi('witness',{cid});if(r.ok){CME=r;cNote(cid,'You were there')}},8000)}
+ setTimeout(async()=>{const r=await cApi('witness',{cid});if(r.ok){CME=r;CFOUND[cid]=1;cSaveFound();cNote(cid,'You were there')}},8000)}
 
 // ---- compact screen: details and extra buttons fold away ----
 (function(){const hm=LS.get('hl_mini'),rm=LS.get('hl_rmini');document.body.classList.toggle('mini',hm===null?MOBILE:hm==='1');document.body.classList.toggle('rmini',rm===null?true:rm==='1');
@@ -2892,7 +2946,7 @@ function wikiSearch(q){return 'https://en.wikipedia.org/wiki/Special:Search?go=G
 function evWiki(y,title){if(WIKI[title])return wikiURL(WIKI[title]);if(WHW[title])return WHW[title].wk?wikiURL(WHW[title].wk):wikiSearch(WHW[title].n);if(TBW[title])return TBW[title].wk?wikiURL(TBW[title].wk):wikiSearch(TBW[title].n);if(QWX[title])return wikiSearch(QWX[title][13]);if(VNX[title])return wikiSearch(Math.floor(VNX[title][0])>0?Math.floor(VNX[title][0])+' eruption of '+VNX[title][14]:VNX[title][14]+' volcano');if(TSX[title])return wikiSearch(TSX[title][14]);const xm=title.match(/^The last (.*) dies out$/);if(xm){const e=EXT.find(e=>e[1]===xm[1]);if(e)return wikiURL(e[5])}let q=title.replace(/\(.*?\)/g,'').split(/[:;,]/)[0].replace(/^The /,'').trim();if(/earthquake|eruption|erupts|tsunami|famine|pandemic|plague|hurricane/i.test(q)&&y>0)q=Math.round(y)+' '+q.replace(/ erupts.*/,' eruption');return wikiSearch(q)}
 function facts(title){const L=[];const qn=QWX[title];if(qn){const k=qnToll(qn);if(k)L.push(['Lives lost',k]);if(qn[8])L.push(['Houses destroyed',Number(qn[8]).toLocaleString('en-US')]);if(qn[9])L.push(['Damage',`about $${Number(qn[9]).toLocaleString('en-US')} million (money of the time)`]);if(qn[10])L.push(['Strongest shaking',`intensity ${['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'][qn[10]]||qn[10]} of XII (Modified Mercalli)`]);if(qn[11])L.push(['Depth',qn[11]+' km']);if(qn[7])L.push(['Tsunami','This earthquake raised a tsunami']);if(qn[12])L.push(['Volcano','Linked to a volcanic eruption']);L.push(['Source','NOAA NCEI Global Significant Earthquake Database'])}hzFacts(title,L);skyFacts(title,L);btFacts(title,L);whFacts(title,L);wrFacts(title,L);tbFacts(title,L);migFacts(title,L);fdFacts(title,L);const sw=SWX[title];if(sw){if(sw.w)L.push([sw.k==='tornado'?'Peak wind (measured or rated)':'Peak wind',sw.w+' km/h']);if(sw.p)L.push(['Lowest pressure',sw.p+' hPa']);if(sw.d)L.push(['Lives lost',sw.d]);if(sw.f)L.push(['Record',sw.f])}if(DTE[title]){L.push(['What happened',DTE[title].f]);L.push(['Source',DTE[title].s])}if(LFE[title])L.push(['How Earth changed',LFE[title]]);if(WFE[title])L.push(['Landmark',WFE[title]]);{const iv=INF[title];if(iv){L.push(['Made by people',iv.f]);if(iv.pl)L.push(['First made in',iv.pl]);if(iv.src)L.push(['Source',iv.src])}}if(EXF[title]){L.push(['Lost species',EXF[title]]);if(EXS[title])L.push(['Source',EXS[title]])}const M=title.match(/M\s?(\d\.\d)/);if(M)L.push(['Magnitude',M[1]+' (each step up is about 32 times more energy)']);const ts=title.match(/(\d+) m tsunami|tsunami up to (\d+) m/);if(ts)L.push(['Tsunami',`up to ${ts[1]||ts[2]} m`]);const mt=title.match(/([\d.]+ (?:megatons|kilotons))/);if(mt)L.push(['Energy',mt[1]]);const n=title.match(/(\d[\d,.]* (?:million|billion)?\s?(?:people|die|dead|casualties|Jews|houses))/);if(n)L.push(['Toll',n[1]]);const sz=title.match(/(\d+ (?:m|km)) (?:space rock|meteor|rock|asteroid)/);if(sz)L.push(['Size',sz[1]]);return L}
 function placeName(U){let best=null,bd=1e9;for(const s of S){if(!s.U)continue;const d=s.U.angleTo(U);if(d<bd){bd=d;best=s}}let nearC='';if(CITY){let bi=-1,bdd=-2;for(let i=0;i<CITY.n;i++){const d=CITY.U[i*3]*U.x+CITY.U[i*3+1]*U.y+CITY.U[i*3+2]*U.z;if(d>bdd){bdd=d;bi=i}}if(bi>=0&&bdd>Math.cos(8*DEG)){const c=COUNTRIES.find(c=>c[0]===CITY.cc[bi]);nearC=c?c[1]:''}if(!nearC&&hAt(...ll(U.x,U.y,U.z))<0)return best&&bd<.03?nameAt(best,simY):'the open ocean'}if(!nearC&&!CITY&&typeof COUNTRIES!=='undefined'){let cd2=1e9;const p=ll(U.x,U.y,U.z);for(const c of COUNTRIES){const d=(c[2]-p[0])**2+((c[3]-p[1])*Math.cos(p[0]*DEG))**2;if(d<cd2){cd2=d;nearC=c[1]}}}return(best&&bd<.03?nameAt(best,simY)+(nearC?', ':''):'')+(simY>1500?nearC:nearC?'in what is now '+nearC:'')}
-function showEvent(y,title,lat,lon,key){let U=null;if(JRNM[title]&&lat==null){lat=JRNM[title][3][0][0];lon=JRNM[title][3][0][1]}if(lat!=null)U=v3(lat,lon,1);else if(EVLOC[title]){let [a,o]=EVLOC[title];if(y<-5e6){const p=paleoPos(a,o,y);a=p[0];o=p[1]}U=v3(a,o,1)}else if(key&&SK[key]&&SK[key].U)U=SK[key].U;const b=BIG.find(x=>x.t===title);if(!U&&b)U=bigPos(b);
+function showEvent(y,title,lat,lon,key){try{const id=cByName(title);if(id)cardFound(id)}catch(e){}let U=null;if(JRNM[title]&&lat==null){lat=JRNM[title][3][0][0];lon=JRNM[title][3][0][1]}if(lat!=null)U=v3(lat,lon,1);else if(EVLOC[title]){let [a,o]=EVLOC[title];if(y<-5e6){const p=paleoPos(a,o,y);a=p[0];o=p[1]}U=v3(a,o,1)}else if(key&&SK[key]&&SK[key].U)U=SK[key].U;const b=BIG.find(x=>x.t===title);if(!U&&b)U=bigPos(b);
  let kind=evKind(title)||(SC_[title]?SC_[title][0]:null);const ck=kind?null:cineKind(title);if(kind==='assn'||kind==='battle'||kind==='quake'||kind==='erupt'||kind==='nuke');const rows=[['When',fmtY(y)]];if(U)rows.push(['Where',placeName(U)||'—']);if(kind&&KINDW[kind])rows.push(['Type',KINDW[kind]]);else if(ck)rows.push(['Type',CINW[ck]]);rows.push(...facts(title));
  const sp=SC_[title];if(sp&&sp[1].a)rows.push(['Sides',`${sp[1].a[0]} vs ${sp[1].b[0]}`]);if(sp&&sp[1].label)rows.push(['Details',sp[1].label]);if(kind&&SEEW[kind])rows.push(['In the sim',SEEW[kind]]);else if(ck)rows.push(['In the sim',CINS[ck]]);
  const d=dayAt(y)-curDay();rows.push([d>0?'Happens in':'Happened',d>0?cd(d)+' of real time':fmtY(y)+' ('+(simY-y<1?'just now':Math.round(simY-y).toLocaleString('en-US')+' years ago in the sim')+')']);
@@ -3055,7 +3109,7 @@ function impactWinter(){const k=simY>=-66.04e6&&simY<-65.9e6?1-(simY+66.04e6)/.1
 // ================== sun ==================
 // near the ground at night a dim blue starlight ambient keeps land and animals faintly visible, brighter when a full moon is up (phase from the Moon's angle to the Sun)
 function updSun(){const now=new Date(),y0=Date.UTC(now.getUTCFullYear(),0,0),doy=(now-y0)/864e5,decl=-23.44*Math.cos(2*Math.PI*(doy+10)/365),utc=now.getUTCHours()+now.getUTCMinutes()/60+now.getUTCSeconds()/3600;
- sunDir=v3(decl,(12-utc)*15,1);const iw=impactWinter();sun.intensity=1.15*(1-.75*iw);amb.color.setHex(iw>0?0x8a6a58:0x9aaad0);{const ld=cam.t.lengthSq()?cam.t.dot(sunDir):1,x=clamp((ld+.2)/.28,0,1),nk=1-x*x*(3-2*x),hk=clamp(cam.alt/60,0,1);let mk=0;if(moon&&nk>0){const L=moon.position.length()||1,ce=moon.position.dot(sunDir)/L,up=cam.t.dot(moon.position)/L;mk=(1-ce)*.5*clamp((up+.05)/.2,0,1)}amb.intensity=.46*(1-nk)+nk*lerp(.36+.2*mk,.267+.092*hk,clamp(hk*3,0,1));if(iw<=0&&nk>0)amb.color.lerp(AMB_NIGHT,nk*.55)}scene.background.setHex(iw>0?0x120a06:0x03050a);sun.position.copy(sunDir).multiplyScalar(600);for(const s of S)if(s.U)s.day=s.U.dot(sunDir);for(const z of WZ)if(z.U)z.day=z.U.dot(sunDir);ecoStep(.25*(simY<-70000?1:1))}
+ sunDir=v3(decl,(12-utc)*15,1);const iw=impactWinter();sun.intensity=1.15*(1-.75*iw);amb.color.setHex(iw>0?0x8a6a58:0x9aaad0);{const ld=cam.t.lengthSq()?cam.t.dot(sunDir):1,x=clamp((ld+.2)/.28,0,1),nk=1-x*x*(3-2*x),hk=clamp(cam.alt/60,0,1);let mk=0;if(moon&&nk>0){const L=moon.position.length()||1,ce=moon.position.dot(sunDir)/L,up=cam.t.dot(moon.position)/L;mk=(1-ce)*.5*clamp((up+.05)/.2,0,1)}amb.intensity=.46*(1-nk)+nk*lerp(.36+.2*mk,.267+.092*hk,clamp(hk*3,0,1));if(iw<=0&&nk>0)amb.color.lerp(AMB_NIGHT,nk*.55)}scene.background.setHex(iw>0?0x120a06:0x03050a);sun.position.copy(sunDir).multiplyScalar(600);if(window.__ATMU){const A=window.__ATMU;A.uSun.value.copy(sunDir);A.uCam.value.copy(camera.position);A.uAlt.value=clamp((cam.alt-3)/25,0,1)}for(const s of S)if(s.U)s.day=s.U.dot(sunDir);for(const z of WZ)if(z.U)z.day=z.U.dot(sunDir);ecoStep(.25*(simY<-70000?1:1))}
 
 // ================== main loop ==================
 let syncT=45,last=performance.now(),acc=0,hudT=0,saveT=0,nightT=0,herdT=0;

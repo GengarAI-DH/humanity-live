@@ -98,6 +98,50 @@ for (const e of (J('inventions.json') || {}).inv || []) {
 // landforms
 for (const l of (J('landforms.json') || {}).lf || []) add('lf', l[2], l[9] || l[2], l[0], 2, l[7], l[8], 0);
 
+
+// ---- card quizzes: up to three questions per card, built only from the same sourced data as the card ----
+// Answers are never written by hand: the right answer and every wrong option come from real records.
+function rng(seed) { let h = 2166136261; for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296 }
+function fmtY(y) { return y < -1e6 ? (-y / 1e6).toFixed(1).replace(/\.0$/, '') + ' million years ago' : y < -9999 ? Math.round(-y).toLocaleString('en-US') + ' years ago' : y < 0 ? Math.round(-y) + ' BC' : 'AD ' + Math.round(y) }
+function fmtMa(a, b) { const f = x => x >= 1 ? (+x.toFixed(1)) + ' million' : Math.max(1, Math.round(x * 1000)).toLocaleString('en-US') + ' thousand'; if (!(b > 0)) return 'From about ' + f(a) + ' years ago to today'; const fa = f(a), fb = f(b); return 'About ' + (fa.endsWith(' million') && fb.endsWith(' million') ? fa.replace(' million', '') : fa) + ' to ' + fb + ' years ago' }
+function mcq(r, q, right, wrongs) { const w = [...new Set(wrongs)].filter(x => x && x !== right); if (w.length < 2) return null; for (let i = w.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1));[w[i], w[j]] = [w[j], w[i]] } const opts = [right, ...w.slice(0, 3)]; for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1));[opts[i], opts[j]] = [opts[j], opts[i]] } return [q, opts, opts.indexOf(right)] }
+const far = (a, b) => { if (a > -1e4 || b > -1e4) return Math.abs(a - b) >= Math.max(60, Math.abs(Math.min(a, b) - 2026) * .25); return Math.max(-a, -b) / Math.min(-a, -b) >= 1.6 };
+const SPD = {}; for (const s of (spj && spj.sp) || []) SPD[slug(s[0])] = s;
+const SPB = {}; for (const [k, v] of Object.entries(SP)) SPB[slug(k)] = v;
+const DIET = { carnivore: 'Other animals (meat)', herbivore: 'Plants', omnivore: 'Both plants and animals', insectivore: 'Insects and other small invertebrates' };
+const km = (a, b) => { const r = Math.PI / 180, x = Math.sin((b[0] - a[0]) * r / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin((b[1] - a[1]) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
+const goodSite = n => n && !/^fossil site/i.test(n) && !/Ma\)$/.test(n);
+const allSites = []; for (const s of (spj && spj.sp) || []) for (const t of s[13] || []) if (goodSite(t[2])) allSites.push([s[0], t]);
+const ranges = Object.values(SPD).filter(s => s[4] > 0).map(s => [s[4], Math.max(s[5], 0)]);
+const PLD = {}; for (const p of (spj && spj.plants) || []) PLD[slug(p[0])] = p;
+const quiz = {};
+for (const c of cards) {
+  const r = rng(c[0]), Q = [], add2 = x => { if (x) Q.push(x) }, nm = c[3];
+  if (c[2] === 'an') {
+    const key = c[0].slice(3, c[0].length - c[1].length - 1), s = SPD[key], b = SPB[key];
+    const a0 = s ? s[4] : b && b[4], a1 = s ? Math.max(s[5], 0) : b && Math.max(b[5], 0);
+    if (a0 > 0) add2(mcq(r, 'When did ' + nm + ' live?', fmtMa(a0, a1), ranges.filter(([x, y]) => x < a1 * .8 || y > a0 * 1.25).sort(() => r() - .5).map(([x, y]) => fmtMa(x, y))));
+    if (s && DIET[s[10]]) add2(mcq(r, 'What did ' + nm + ' mainly eat?', DIET[s[10]], Object.values(DIET)));
+    if (s && s[13] && s[13].length) {
+      const good = s[13].filter(t => goodSite(t[2]));
+      // a wrong option must be at least 1,500 km from every place this animal is known from, so it can't secretly be right
+      if (good.length) add2(mcq(r, 'Where have ' + nm + ' fossils been found?', good[Math.floor(r() * good.length)][2], allSites.filter(([o, t]) => o !== s[0] && s[13].every(m => km(m, t) > 1500)).sort(() => r() - .5).map(x => x[1][2])));
+    }
+  } else if (c[2] === 'pl') {
+    const p = PLD[slug(nm)];
+    if (p) add2(mcq(r, 'About how far back does the fossil record of ' + nm + ' go?', fmtY(-p[2] * 1e6), Object.values(PLD).filter(o => o[2] / p[2] >= 1.6 || p[2] / o[2] >= 1.6).sort(() => r() - .5).map(o => fmtY(-o[2] * 1e6))));
+  } else {
+    const same = cards.filter(o => o[2] === c[2] && o[0] !== c[0]);
+    const qy = c[2] === 'ex' ? 'When did the last ' + nm.replace(/^Last /, '') + ' die out?' : ['wo', 'iv'].includes(c[2]) ? 'When does ' + nm + ' date from?' : 'When did this happen: “' + nm + '”?';
+    add2(mcq(r, qy, fmtY(c[5]), same.filter(o => far(o[5], c[5])).sort(() => r() - .5).map(o => fmtY(o[5]))));
+    if (c[6] && c[6].length <= 170 && !/^A fossil plant/.test(c[6])) add2(mcq(r, 'Which fact belongs to ' + nm + '?', c[6], same.filter(o => o[6] && o[6].length <= 170 && o[6] !== c[6]).sort(() => r() - .5).map(o => o[6])));
+  }
+  if (Q.length) quiz[c[0]] = Q;
+}
+fs.mkdirSync(path.join(ROOT, 'public', 'quiz'), { recursive: true });
+for (const s of SEASONS) { const o = {}; for (const c of cards) if (c[1] === s[0] && quiz[c[0]]) o[c[0]] = quiz[c[0]]; fs.writeFileSync(path.join(ROOT, 'public', 'quiz', s[0] + '.json'), JSON.stringify(o)) }
+console.log('quiz cards', Object.keys(quiz).length, 'questions', Object.values(quiz).reduce((a, q) => a + q.length, 0));
+
 const RAR = [null, ['Common', 60], ['Uncommon', 25], ['Rare', 11], ['Epic', 3.5], ['Legendary', 0.5]];
 const out = { v: 1, seasons: SEASONS, rarity: RAR, cards };
 fs.writeFileSync(path.join(ROOT, 'public', 'cards.json'), JSON.stringify(out));

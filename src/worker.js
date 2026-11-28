@@ -52,6 +52,7 @@ export class Room extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS cinst(uid TEXT, cid TEXT, serial INTEGER, ts INTEGER, PRIMARY KEY(cid, serial))");
       this.sql.exec("CREATE INDEX IF NOT EXISTS cinst_u ON cinst(uid, cid)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS cmint(cid TEXT PRIMARY KEY, n INTEGER)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS cdone(uid TEXT, cid TEXT, ts INTEGER, PRIMARY KEY(uid, cid))");
       // serial numbers are drawn at random from 1 to 71,250,000 (one for every year the world covers); move the first test copies onto random numbers once
       if (![...this.sql.exec("SELECT name FROM sqlite_master WHERE name='serial_v2'")].length) {
         for (const r of [...this.sql.exec("SELECT cid,serial FROM cinst")]) this.sql.exec("UPDATE cinst SET serial=? WHERE cid=? AND serial=?", this.freeSerial(r.cid), r.cid, r.serial);
@@ -150,7 +151,8 @@ export class Room extends DurableObject {
     for (const r of this.sql.exec("SELECT m.cid,m.n FROM cmint m WHERE m.cid IN (SELECT DISTINCT cid FROM cinst WHERE uid=?)", u.uid)) minted[r.cid] = r.n;
     const offers = [...this.sql.exec("SELECT id,give,want,ts FROM offer WHERE uid=? AND status='open'", u.uid)];
     const day = new Date().toISOString().slice(0, 10);
-    return { ok: true, id: u.uid.slice(0, 6), name: u.name || "", signedIn: !!u.gsub, cards, ser, minted, daily: u.daily !== day, spotsLeft: u.sday === day ? Math.max(0, 8 - u.sn) : 8, offers };
+    const done = {}; for (const r of this.sql.exec("SELECT cid FROM cdone WHERE uid=?", u.uid)) done[r.cid] = 1;
+    return { ok: true, id: u.uid.slice(0, 6), name: u.name || "", signedIn: !!u.gsub, cards, ser, minted, done, daily: u.daily !== day, spotsLeft: u.sday === day ? Math.max(0, 8 - u.sn) : 8, offers };
   }
   async cardsOp(op, b, ipH, ctx) {
     const day = new Date().toISOString().slice(0, 10), kh = b.k && /^[a-f0-9]{32,64}$/.test(b.k) ? await hash("k" + b.k) : null;
@@ -184,12 +186,13 @@ export class Room extends DurableObject {
       if (b.win) this.cGive(u.uid, b.cid);
       return { ...this.cMe({ ...u, sday: day, sn: sn + 1 }), got: b.win ? [b.cid] : [] };
     }
+    if (op === "done") { if (!this.cHas(u.uid, b.cid)) return { ok: false, error: "Collect this card first." }; this.sql.exec("INSERT OR IGNORE INTO cdone VALUES(?,?,?)", u.uid, b.cid, Date.now()); return this.cMe(u); }
     if (op === "witness") { if (this.cHas(u.uid, b.cid)) return { ok: false, error: "You already have this card." }; this.cGive(u.uid, b.cid); return { ...this.cMe(u), got: [b.cid] }; }
     if (op === "google") {
       const g = b.g; let owner = [...this.sql.exec("SELECT uid FROM cuser WHERE gsub=?", g.sub)][0];
       if (!owner) { this.sql.exec("UPDATE cuser SET gsub=? WHERE uid=?", g.sub, u.uid); if (!u.name && g.name) { const nm = String(g.name).split(" ")[0].slice(0, 18); if (!checkText(nm, "name")) this.sql.exec("UPDATE cuser SET name=? WHERE uid=?", nm, u.uid); } return this.cMe(this.cUser(kh)); }
       if (owner.uid !== u.uid) { // this device joins the signed-in account and brings its cards along
-        this.backfill(u.uid); this.sql.exec("UPDATE cinst SET uid=? WHERE uid=?", owner.uid, u.uid); this.sql.exec("UPDATE ckey SET uid=? WHERE kh=?", owner.uid, kh);
+        this.backfill(u.uid); this.sql.exec("UPDATE cinst SET uid=? WHERE uid=?", owner.uid, u.uid); this.sql.exec("INSERT OR IGNORE INTO cdone SELECT ?,cid,ts FROM cdone WHERE uid=?", owner.uid, u.uid); this.sql.exec("DELETE FROM cdone WHERE uid=?", u.uid); this.sql.exec("UPDATE ckey SET uid=? WHERE kh=?", owner.uid, kh);
       }
       return this.cMe(this.cUser(kh));
     }
@@ -287,6 +290,7 @@ async function cardsApi(op, request, env, room) {
   const ipH = await hash("ip" + (request.headers.get("cf-connecting-ip") || "") + (env.SALT || "hl"));
   if (op === "daily") b.picks = pickCards(cat, se[0], 3);
   if (op === "spot") { const c = cat.byId[b.cid]; if (!c || !["an", "pl"].includes(c[2]) || c[1] !== se[0]) return J({ ok: false, error: "That card isn't in this season." }); b.win = Math.random() < .35; }
+  if (op === "done" && !cat.byId[b.cid]) return J({ ok: false, error: "Unknown card." });
   if (op === "witness") { const c = cat.byId[b.cid]; if (!c || c[2] !== "ev") return J({ ok: false, error: "Not an event card." }); const ed = dayAt(c[5]); if (w.d < ed - 0.01 || w.d > ed + 0.25) return J({ ok: false, error: "You have to be watching when it happens." }); }
   if (["offer", "accept"].includes(op)) { const g = cat.byId[b.give], wa = cat.byId[b.want]; if (op === "offer" && (!g || !wa)) return J({ ok: false, error: "Unknown card." }); }
   if (op === "google") { const g = await verifyGoogle(b.cred, env); if (!g) return J({ ok: false, error: "Google sign-in failed." }); b.g = g; }
@@ -296,7 +300,7 @@ async function cardsApi(op, request, env, room) {
   return J(await room.cardsOp(op, b, ipH));
 }
 // ---------- nightly backups to KV (gzip, split into 20 MB parts, 30 days kept) ----------
-const BACKUP_TABLES = ["wdoc", "msg", "ban", "idea", "vote", "report", "sub", "fol", "ckey", "cuser", "card", "cinst", "cmint", "offer"];
+const BACKUP_TABLES = ["wdoc", "msg", "ban", "idea", "vote", "report", "sub", "fol", "ckey", "cuser", "card", "cinst", "cmint", "cdone", "offer"];
 async function gz(str) { const s = new Blob([str]).stream().pipeThrough(new CompressionStream("gzip")); return new Uint8Array(await new Response(s).arrayBuffer()); }
 async function gunz(buf) { const s = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip")); return await new Response(s).text(); }
 async function runBackup(env, room, force) {
@@ -404,7 +408,7 @@ export default {
     if (url.pathname === "/api/wdoc") { if (request.method === "PUT") return room.fetch(new Request(url.origin + "/wset" + url.search, { method: "POST", body: await request.text() })); return room.fetch(new Request(url.origin + "/wget" + url.search)); }
     if (url.pathname === "/api/stats") return room.fetch(new Request(url.origin + "/stats"));
     if (url.pathname.startsWith("/api/admin/")) return adminApi(url.pathname.slice(11), request, env, room);
-    if (url.pathname.startsWith("/api/cards/")) { const op = url.pathname.slice(11); if (!/^(catalog|me|name|daily|spot|witness|offers|offer|cancel|accept|google|signout|shop|top)$/.test(op)) return J({ ok: false }, 404); return cardsApi(op, request, env, room); }
+    if (url.pathname.startsWith("/api/cards/")) { const op = url.pathname.slice(11); if (!/^(catalog|me|name|daily|spot|witness|done|offers|offer|cancel|accept|google|signout|shop|top)$/.test(op)) return J({ ok: false }, 404); return cardsApi(op, request, env, room); }
     if (url.pathname.startsWith("/a/")) { const n = url.pathname.slice(3); if (!/^[a-z0-9_.-]{1,60}$/.test(n)) return new Response("not found", { status: 404 }); const v = await env.IMPORTS.getWithMetadata("file:" + n, { type: "arrayBuffer", cacheTtl: 3600 }); if (!v.value) return new Response("not found", { status: 404 }); return new Response(v.value, { headers: { "content-type": "application/octet-stream", "cache-control": "public, max-age=86400", "access-control-allow-origin": "*" } }); }
     if (url.pathname === "/api/wx") return realWeather(url, ctx);
     if (url.pathname === "/api/ideas") return room.fetch(new Request(url.origin + "/ideas"));
