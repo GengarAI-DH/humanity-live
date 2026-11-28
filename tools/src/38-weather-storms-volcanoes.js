@@ -18,22 +18,53 @@ function stormTex(){const c=document.createElement('canvas');c.width=c.height=25
 let STEX=null,TRK=null;
 // tapped storm: its path so far (white) and where it is headed (orange dashes), from the same motion the storm follows
 function stormPos(s,t){const lat=s.lat+(s.lat>0?1:-1)*.004*(t-s.t),lon=s.lon+s.dl*.01*(t-s.t);return[lat,lon]}
-function stormTrack(s){if(TRK){scene.remove(TRK.g);TRK.g.traverse(o=>{if(o.geometry)o.geometry.dispose()})}const g=new THREE.Group(),past=[],fut=[];
- for(let t=0;t<=s.life;t+=8){const [la,lo]=stormPos(s,t),v=v3(la,lo,R+2.7);(t<=s.t?past:fut).push(v)}fut.unshift(v3(...stormPos(s,s.t),R+2.7));
- if(past.length>1)g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(past),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.55,depthWrite:false})));
- const fl=new THREE.Line(new THREE.BufferGeometry().setFromPoints(fut),new THREE.LineDashedMaterial({color:0xff9a3d,dashSize:1.2,gapSize:.8,transparent:true,depthWrite:false}));fl.computeLineDistances();g.add(fl);
- const end=new THREE.Mesh(new THREE.SphereGeometry(.7,8,6),new THREE.MeshBasicMaterial({color:0xff9a3d}));end.position.copy(fut[fut.length-1]);g.add(end);g.renderOrder=5;scene.add(g);TRK={g,s,keep:0};
- const rows=[];let hit=null;for(let i=1;i<fut.length&&!hit;i++){const U=fut[i].clone().normalize();for(const st of S)if(st.built&&st.U&&st.tier>=0&&st.U.angleTo(U)<.05){hit=st;break}}
- const dir=(s.lat>0?'north':'south')+(s.dl<0?'west':'east');rows.push(['Heading',dir]);rows.push(['Landfall',hit?'Headed toward '+nameAt(hit,simY):'Expected to stay over open water']);rows.push(['Fades out',`in about ${Math.max(1,Math.round((s.life-s.t)/60))} min (real time)`]);rows.push(['Path','White line: where it has been. Orange dashes: where it is headed']);
- return{rows,mid:fut[Math.floor(fut.length/2)].clone().normalize()}}
+// Strength over a storm's life: a depression that strengthens to its peak a little before halfway, holds, then weakens (a typical life cycle, NOAA NHC).
+// Storm time: one real second is about 15 minutes of storm time (the clock's pace from 1800 on), so a 500-second storm lives about 5 days.
+const SSH=.25,SSC=[[-1,'#5ebaff','D'],[0,'#00faf4','S'],[1,'#ffffcc','H'],[2,'#ffe775','H'],[3,'#ffc140','M'],[4,'#ff8f20','M'],[5,'#ff6060','M']];
+function windOf(s,t){const k=t/s.life,a=k<.42?Math.pow(k/.42,1.3):k<.68?1:Math.max(0,1-(k-.68)/.32*.85);return Math.round(45+(s.pw-45)*a)}
+function catOfW(w){return w<63?-1:w<119?0:w<154?1:w<178?2:w<209?3:w<252?4:5}
+function catName(c){return c<0?'Tropical depression':c===0?'Tropical storm':'Category '+c}
+function catShort(c){return c<0?'Depression':c===0?'Tropical storm':'Cat '+c}
+// NHC 2026 track forecast cone: circles holding two-thirds of the last five years' forecast errors (Atlantic basin, nautical miles)
+const CONE=[[12,25],[24,39],[36,49],[48,62],[60,77],[72,95],[96,134],[120,200]];
+function surfPt(la,lo,h){return v3(la,lo,R+h)}
+function ribbon(pts,w,cols,h){const n=pts.length,pos=new Float32Array(n*6),col=new Float32Array(n*6),idx=[];for(let i=0;i<n;i++){const a=pts[Math.max(0,i-1)],b=pts[Math.min(n-1,i+1)],t=b.clone().sub(a).normalize(),up=pts[i].clone().normalize(),sd=new THREE.Vector3().crossVectors(t,up).normalize().multiplyScalar(w/2);
+ const L=pts[i].clone().add(sd),Rr=pts[i].clone().sub(sd);pos.set([L.x,L.y,L.z,Rr.x,Rr.y,Rr.z],i*6);const c=cols[i];col.set([c.r,c.g,c.b,c.r,c.g,c.b],i*6);if(i<n-1)idx.push(i*2,i*2+1,i*2+2,i*2+1,i*2+3,i*2+2)}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));g.setIndex(idx);const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.95,depthWrite:false,side:THREE.DoubleSide}));m.renderOrder=6;return m}
+function dotSprite(c,letter,label){const cv=document.createElement('canvas');cv.width=256;cv.height=64;const x=cv.getContext('2d');x.fillStyle='rgba(0,0,0,.55)';x.beginPath();x.arc(32,32,26,0,7);x.fill();x.fillStyle=c;x.beginPath();x.arc(32,32,21,0,7);x.fill();x.fillStyle='#111';x.font='bold 26px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(letter,32,33);
+ if(label){x.textAlign='left';x.font='bold 24px system-ui,sans-serif';x.lineWidth=5;x.strokeStyle='rgba(0,0,0,.75)';x.strokeText(label,62,33);x.fillStyle='#fff';x.fillText(label,62,33)}const t=new THREE.CanvasTexture(cv),sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthWrite:false,depthTest:false,transparent:true}));sp.center.set(.125,.5);sp.renderOrder=8;return sp}
+function stormWhen(h){if(simY<1850)return`+${h} h`;const Y=simY+h/8766,yr=Math.floor(Y),d=new Date(0);d.setUTCFullYear(yr,0,1);d.setUTCHours(0,0,0,0);d.setTime(d.getTime()+(Y-yr)*365.2425*864e5);const hr=d.getUTCHours();return`${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getUTCDay()]} ${(hr%12)||12} ${hr<12?'AM':'PM'}`}
+function stormTrack(s){if(TRK){scene.remove(TRK.g);TRK.g.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.map)o.material.map.dispose()})}const g=new THREE.Group(),H=2.75;
+ // where it has been, coloured by its strength at each point
+ const past=[],pc=[];for(let t=0;t<=s.t;t+=4){const[la,lo]=stormPos(s,t);past.push(surfPt(la,lo,H));pc.push(new THREE.Color(SSC[catOfW(windOf(s,t))+1][1]))}{const[la,lo]=stormPos(s,s.t);past.push(surfPt(la,lo,H));pc.push(new THREE.Color(SSC[s.cat+1][1]))}
+ if(past.length>1)g.add(ribbon(past,.55,pc));
+ // the cone and the forecast points
+ const pts=[[0,0]].concat(CONE.map(c=>[c[0],c[1]*1.852/63.71])).filter(p=>s.t+p[0]/SSH<=s.life+1),cen=pts.map(p=>stormPos(s,s.t+p[0]/SSH)),L=[],Rr=[];
+ const P=cen.map(c=>v3(c[0],c[1],1));for(let i=0;i<P.length;i++){const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)],tg=b.clone().sub(a).normalize(),sd=new THREE.Vector3().crossVectors(tg,P[i]).normalize(),r=pts[i][1]/R;L.push(P[i].clone().addScaledVector(sd,r).normalize());Rr.push(P[i].clone().addScaledVector(sd,-r).normalize())}
+ if(P.length>1){const last=P[P.length-1],r=pts[pts.length-1][1]/R,tg=last.clone().sub(P[P.length-2]).normalize(),sd=new THREE.Vector3().crossVectors(tg,last).normalize(),cap=[];for(let k=0;k<=12;k++){const a=k/12*Math.PI;cap.push(last.clone().addScaledVector(sd,r*Math.cos(a)).addScaledVector(tg,r*Math.sin(a)).normalize())}
+  const ring=L.concat(cap.slice(1,-1),Rr.slice().reverse()),pos=[],ctr=P[Math.floor(P.length/2)];const fan=[];for(let i=0;i<P.length;i++)fan.push(P[i]);
+  // fill as strips between the left and right edges (days 1-3 brighter, days 4-5 fainter, like NHC's solid and stippled cone)
+  for(const day3 of [true,false]){const pp=[];for(let i=0;i<P.length-1;i++){if((pts[i+1][0]<=72)!==day3)continue;for(const v of [L[i],Rr[i],L[i+1],Rr[i],Rr[i+1],L[i+1]])pp.push(...v.clone().multiplyScalar(R+H-.05).toArray())}
+   if(!day3&&P.length>1){const last=P[P.length-1].clone().multiplyScalar(R+H-.05);for(let k=0;k<cap.length-1;k++)pp.push(...last.toArray(),...cap[k].clone().multiplyScalar(R+H-.05).toArray(),...cap[k+1].clone().multiplyScalar(R+H-.05).toArray())}
+   if(day3&&pts[pts.length-1][0]<=72){const last=P[P.length-1].clone().multiplyScalar(R+H-.05);for(let k=0;k<cap.length-1;k++)pp.push(...last.toArray(),...cap[k].clone().multiplyScalar(R+H-.05).toArray(),...cap[k+1].clone().multiplyScalar(R+H-.05).toArray())}
+   if(!pp.length)continue;const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(pp,3));const me=new THREE.Mesh(gg,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:day3?.32:.16,depthWrite:false,side:THREE.DoubleSide}));me.renderOrder=5;g.add(me)}
+  const ol=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ring.map(v=>v.clone().multiplyScalar(R+H))),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.85,depthWrite:false}));ol.renderOrder=6;g.add(ol);
+  const tl=new THREE.Line(new THREE.BufferGeometry().setFromPoints(P.map(v=>v.clone().multiplyScalar(R+H+.02))),new THREE.LineBasicMaterial({color:0x111111,transparent:true,opacity:.8,depthWrite:false}));tl.renderOrder=7;g.add(tl)}
+ const sp=[];for(let i=0;i<P.length;i++){const h=pts[i][0],w=windOf(s,s.t+h/SSH),c=SSC[catOfW(w)+1],d=dotSprite(i?c[1]:'#ff9a3d',i?c[2]:'●',!i?'Now':h%24?'':stormWhen(h));d.position.copy(P[i]).multiplyScalar(R+H+.05);g.add(d);sp.push(d)}
+ g.renderOrder=5;scene.add(g);TRK={g,s,keep:0,sp,rt:3};
+ const rows=[];let hit=null,hitH=0;for(let t=s.t;t<=s.life&&!hit;t+=4){const U=v3(...stormPos(s,t),1);for(const st of S)if(st.built&&st.U&&st.tier>=0&&st.U.angleTo(U)<.05){hit=st;hitH=(t-s.t)*SSH;break}}
+ const dir=(s.lat>0?'north':'south')+(s.dl<0?'west':'east');rows.push(['Heading',dir]);rows.push(['Moving at',`about ${Math.round(Math.hypot(s.dl*.01*111*Math.cos(s.lat*DEG),.004*111)/SSH)} km/h`]);rows.push(['Landfall',hit?`Headed toward ${nameAt(hit,simY)} in about ${Math.max(1,Math.round(hitH))} hours`:'Expected to stay over open water']);
+ rows.push(['Map',"Coloured line: where it has been, by strength. White cone: where the centre will probably go (two times out of three, using the National Hurricane Center's 2026 cone sizes; brighter for days 1 to 3). Dots: forecast strength, D depression, S tropical storm, H hurricane, M major hurricane"]);
+ return{rows,mid:P[Math.min(P.length-1,3)].clone().normalize()}}
+function trkTick(dt){TRK.rt-=dt;const sc=Math.max(1.2,cam.alt*.045);for(const d of TRK.sp)d.scale.set(sc*3.2,sc*.8,1);if(TRK.rt<=0){TRK.rt=8;const k=TRK.keep;stormTrack(TRK.s);TRK.keep=k}}
 function updDisasters(dt){if(simY<-70000&&simY<-3e6){}
  // tropical storms in their real seasons (by the real calendar month)
  stormT-=dt;const mon=new Date().getUTCMonth()+1;
  if(stormT<=0){stormT=60+rnd()*120;const B=BASINS.filter(b=>b.m[0]<=b.m[1]?mon>=b.m[0]&&mon<=b.m[1]:mon>=b.m[0]||mon<=b.m[1]);if(B.length&&STORMS.length<4){const b=pick(B);if(!STEX)STEX=stormTex();const m=new THREE.Mesh(new THREE.PlaneGeometry(9,9),new THREE.MeshBasicMaterial({map:STEX,transparent:true,depthWrite:false,opacity:.0}));scene.add(m);
    const name=simY>=1953?b.n+' '+pick(['Ana','Bill','Clara','Danny','Elsa','Fred','Grace','Henri','Kate','Larry','Mindy','Nora','Odette','Peter','Rose','Sam','Teresa','Victor','Wanda']):simY>=1500?'Unnamed '+b.n.toLowerCase():'Tropical cyclone';
-   const cat=rnd()<.35?1:rnd()<.5?2:rnd()<.6?3:rnd()<.7?4:5,wind=[0,119,154,178,209,252][cat]+Math.round(rnd()*25);{const km=320+rnd()*620+cat*40;m.scale.setScalar(km/64/9)}STORMS.push({km:0,cat,wind,m,lat:b.lat[0]+rnd()*(b.lat[1]-b.lat[0]),lon:b.lon[0]+rnd()*(b.lon[1]-b.lon[0]),dl:b.dl,t:0,life:400+rnd()*300,name,rot:0})}}
- for(const s of STORMS){s.t+=dt;s.lon+=s.dl*dt*.01;s.lat+=(s.lat>0?1:-1)*dt*.004;s.rot+=dt*(s.lat>0?.6:-.6);const U=v3(s.lat,s.lon,1);s.m.position.copy(U).multiplyScalar(R+2.6);s.m.lookAt(0,0,0);s.m.rotateZ(s.rot);s.m.material.opacity=clamp(Math.min(s.t/40,(s.life-s.t)/40),0,1)*(.6+.06*s.cat);s.U=U;
-  if(!s.hit)for(const st of S){if(st.built&&st.U&&st.U.angleTo(U)<.05&&st.tier>=0){s.hit=1;addEv(simY,`${s.name} (Category ${s.cat}, ${s.wind} km/h winds, ${(s.cat*1.3).toFixed(1)} m storm surge) strikes ${nameAt(st,simY)}`,st.k,true);try{if(st.U.angleTo(cam.t)<.4)landfall(st,s)}catch(e){}st.mm=1.15;st.mu=simY+.3;st.fm=.85;st.fu=simY+.5;break}}}
+   const cat=rnd()<.35?1:rnd()<.5?2:rnd()<.6?3:rnd()<.7?4:5,wind=[0,119,154,178,209,252][cat]+Math.round(rnd()*25);{const km=320+rnd()*620+cat*40;m.scale.setScalar(km/64/9)}STORMS.push({km:0,cat:-1,wind:50,pk:cat,pw:wind,m,lat:b.lat[0]+rnd()*(b.lat[1]-b.lat[0]),lon:b.lon[0]+rnd()*(b.lon[1]-b.lon[0]),dl:b.dl,t:0,life:400+rnd()*300,name,rot:0})}}
+ for(const s of STORMS){s.t+=dt;{const w=windOf(s,s.t);s.wind=w;s.cat=catOfW(w)}if(TRK&&TRK.s===s)trkTick(dt);s.lon+=s.dl*dt*.01;s.lat+=(s.lat>0?1:-1)*dt*.004;s.rot+=dt*(s.lat>0?.6:-.6);const U=v3(s.lat,s.lon,1);s.m.position.copy(U).multiplyScalar(R+2.6);s.m.lookAt(0,0,0);s.m.rotateZ(s.rot);s.m.material.opacity=clamp(Math.min(s.t/40,(s.life-s.t)/40),0,1)*(.6+.06*s.cat);s.U=U;
+  if(!s.hit)for(const st of S){if(st.built&&st.U&&st.U.angleTo(U)<.05&&st.tier>=0){s.hit=1;addEv(simY,`${s.name} (${catName(s.cat)}, ${s.wind} km/h winds, ${Math.max(.6,s.cat*1.3).toFixed(1)} m storm surge) strikes ${nameAt(st,simY)}`,st.k,true);try{if(st.U.angleTo(cam.t)<.4)landfall(st,s)}catch(e){}st.mm=1.15;st.mu=simY+.3;st.fm=.85;st.fu=simY+.5;break}}}
  STORMS=STORMS.filter(s=>{if(s.t>s.life){scene.remove(s.m);return false}return true});
  if(TRK&&(!STORMS.includes(TRK.s)||(!$('shWiki').classList.contains('on')&&performance.now()>TRK.keep))){scene.remove(TRK.g);TRK.g.traverse(o=>{if(o.geometry)o.geometry.dispose()});TRK=null}
  // wildfires in dry forests, savannas and scrub (more in a warmer world)

@@ -9,27 +9,49 @@ const BIGTH=[[30,'in 30 days'],[7,'in 7 days'],[1,'tomorrow'],[1/24,'in 1 hour']
 function updBig(dt){const d=curDay(),now=performance.now()/1000;let nh=0;
  for(const b of BIG){const left=dayAt(b.y)-d;
   for(const[th,lbl]of BIGTH){if(left<=th&&left>th*.5&&!b.ann[th]&&!catching){b.ann[th]=1;const ak=b.t+'|'+th;let AN={};try{AN=JSON.parse(LS.get('hl_ann')||'{}')}catch(e){}if(AN[ak]||performance.now()<20000&&th>1)continue;AN[ak]=1;const ks=Object.keys(AN);if(ks.length>60)delete AN[ks[0]];LS.set('hl_ann',JSON.stringify(AN));toast(`<b>Coming ${lbl}:</b> ${esc(b.t)}<br><span class="sm">Tap Events to watch from the hotspot</span>`,6000)}}
+  if(b.y===-66.04e6&&left>0&&left<=1.5/86400&&!b.ann.fin&&!catching&&!FIN&&!window.__TEST&&!PV){b.ann.fin=1;startFinale()}
   if(left<=0&&left>-.0005&&!b.ann.now&&!catching){b.ann.now=1;slowFor(b);playScene(b);toast(`<b>Happening now:</b> ${esc(b.t)}<br><span class="sm">Slowing time so you can watch</span>`,6000);stopAuto();flyTo(bigPos(b),b.t.startsWith('Asteroid')?55:2.5)}
   const act=left<=HOTLEAD&&left>-.002;let h=HOTS.find(x=>x.b===b);
   if(act&&!h){h={b,g:hotMesh(),d:document.createElement('div')};h.d.className='geo s';h.d.style.pointerEvents='auto';h.d.style.cursor='pointer';h.d.onclick=()=>{stopAuto();flyTo(bigPos(b),2)};document.body.appendChild(h.d);HOTS.push(h)}
   if(!act&&h){scene.remove(h.g);h.d.remove();HOTS=HOTS.filter(x=>x!==h);continue}
-  if(h){const U=bigPos(b),k=.5+.5*Math.sin(now*3),sc=Math.max(.15,cam.alt*.03);h.g.position.copy(U).multiplyScalar(R+Math.max(0,hDir(U.x,U.y,U.z))+.01);h.g.quaternion.setFromUnitVectors(_hY,U);h.g.scale.setScalar(sc*(1+k*.3));h.g.ring.material.opacity=.4+.5*k;
+  if(h){const U=bigPos(b),k=.5+.5*Math.sin(now*3),sc=Math.max(.15,cam.alt*.03);h.g.position.copy(U).multiplyScalar(R+Math.max(0,hDir(U.x,U.y,U.z))+.01);h.g.quaternion.setFromUnitVectors(_hY,U);h.g.scale.setScalar(sc*(1+k*.3));h.g.visible=!FIN;h.g.ring.material.opacity=.4+.5*k;
    const txt=`⏳ ${b.t} · ${left>0?cd(left):'now'}`;if(h.t!==txt){h.t=txt;h.d.textContent=txt}const v=_hV.copy(h.g.position);const cp=camera.position;if((v.x-cp.x)*U.x+(v.y-cp.y)*U.y+(v.z-cp.z)*U.z>0||v.project(camera).z>1){if(h.vis!==0){h.vis=0;h.d.style.display='none'}continue}if(h.vis!==1){h.vis=1;h.d.style.display='block'}
    let x=((v.x+1)/2*innerWidth)|0,y=((1-v.y)/2*innerHeight)|0;for(let j=0;j<nh;j++){const o=_hXY[j];if(Math.abs(o[0]-x)<150&&Math.abs(o[1]-y)<20){y=o[1]-22;j=-1}}(_hXY[nh]||(_hXY[nh]=[0,0]))[0]=x;_hXY[nh++][1]=y;
    const tf=`translate(${x}px,${y}px) translate(-50%,-140%)`;if(h.tf!==tf){h.tf=tf;h.d.style.transform=tf}}}
  const nx=BIG.find(b=>dayAt(b.y)>d);$('next').innerHTML=nx?`Next big event: <b>${esc(nx.t)}</b> in ${cd(dayAt(nx.y)-d)}`:'';}
 // ================== the asteroid ==================
 let IMP=null;
-function startImpact(){setTimeout(()=>boom(.6),8000);const p=paleoPos(21.3,-89.5,-66.04e6),dir=v3(p[0],p[1],1);const side=new THREE.Vector3(0,1,0).cross(dir).normalize();
+function startImpact(){const skip=IMPSKIP;IMPSKIP=false;setTimeout(()=>boom(.6),skip?0:8000);const p=paleoPos(21.3,-89.5,-66.04e6),dir=v3(p[0],p[1],1);const side=new THREE.Vector3(0,1,0).cross(dir).normalize();
  const met=new THREE.Mesh(new THREE.SphereGeometry(.7,12,8),new THREE.MeshBasicMaterial({color:0xffd27a}));const glow=new THREE.Mesh(new THREE.SphereGeometry(1.6,12,8),new THREE.MeshBasicMaterial({color:0xff7a2a,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}));met.add(glow);
  const flash=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshBasicMaterial({color:0xfff0c0,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
  const ring=new THREE.Mesh(new THREE.RingGeometry(.9,1,64),new THREE.MeshBasicMaterial({color:0xff9a4a,transparent:true,opacity:0,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));ring.lookAt(dir);
- scene.add(met,flash,ring);IMP={t:0,dir,side,met,flash,ring};stopAuto();flyTo(dir.clone().addScaledVector(side,.25).normalize(),55);
- toast('<b>Incoming:</b> a 10 km asteroid at 20 km/s is about to strike what will become Mexico: about 100 million megatons',7000)}
+ scene.add(met,flash,ring);IMP={t:skip?8:0,dir,side,met,flash,ring,P:astPath()};if(!skip){stopAuto();flyTo(dir.clone().addScaledVector(side,.25).normalize(),14)}
+ toast(skip?'<b>Impact.</b> About 100 million megatons: a crater 180 km wide in what will become Mexico':'<b>Incoming:</b> a 10 km asteroid at 20 km/s is about to strike what will become Mexico: about 100 million megatons',7000)}
 function updImpact(dt){if(!IMP)return;const I=IMP;I.t+=dt;const surf=I.dir.clone().multiplyScalar(R+.1);
- if(I.t<8){const k=I.t/8,from=I.dir.clone().multiplyScalar(R+90).addScaledVector(I.side,70);I.met.position.copy(from).lerp(surf,k*k)}
+ if(I.t<8){I.met.position.copy(astAt(I.P,8-I.t))}
  else{I.met.visible=false;if(!I.boomed){I.boomed=true;specInit();blast(I.dir,3.2,{fire:400,debris:1500,debrisV:9,debrisT:4,mushroom:true,H:14,scorch:1.2,scorchLife:600,ringR:12,ringLife:8});tsunami(I.dir,150,75,'Chicxulub');I.ej=1}if(I.ej&&I.t<23)for(let i=0;i<(LITE?3:8);i++){const u=rv();emit('a',u.clone().multiplyScalar(R+4+rnd()*4),u.clone().multiplyScalar(-2-rnd()*2).add(rv().multiplyScalar(.6)),2.5,.25,.08,[1,.7,.3,1],[1,.3,.05,0],0,0)}const k=(I.t-8)/14;I.flash.position.copy(surf);I.flash.scale.setScalar(.5+k*16);I.flash.material.opacity=Math.max(0,1-k);I.ring.position.copy(surf);I.ring.scale.setScalar(1+k*45);I.ring.material.opacity=Math.max(0,.9-k*.9)}
  if(I.t>23){scene.remove(I.met,I.flash,I.ring);IMP=null;if(!catching)flyTo(I.dir,60)}}
+// the asteroid's last 5 minutes at its true speed. At this point of the clock one real second is about a year, so the whole final year of the approach would pass in one second: the clock pauses here instead and the last 300 seconds play in real time.
+// Speed about 20 km/s; direction from the northeast, about 60 degrees above the horizon (Collins et al. 2020, Nature Communications 11:1480, "A steeply-inclined trajectory for the Chicxulub impact"); about 10 km wide. One scene unit is 63.71 km.
+const AST={v:20,D:10,el:60,T0:300,ATM:100};let FIN=null,IMPSKIP=false;
+function astPath(){const p=paleoPos(21.3,-89.5,-66.04e6),U=v3(p[0],p[1],1),E=v3(p[0],p[1]+.5,1).sub(U).normalize(),N=v3(p[0]+.5,p[1],1).sub(U).normalize(),h=N.add(E).normalize(),b=h.multiplyScalar(Math.cos(AST.el*DEG)).addScaledVector(U,Math.sin(AST.el*DEG)).normalize();return{U,b}}
+function astAt(P,tau){return P.U.clone().multiplyScalar(R).addScaledVector(P.b,tau*AST.v/63.71)}
+function startFinale(){const P=astPath(),g=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(true),color:0xffe2b0,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true})),rock=new THREE.Mesh(new THREE.SphereGeometry(AST.D/2/63.71,12,8),new THREE.MeshLambertMaterial({color:0x4a4038})),
+  pts=[];for(let i=0;i<=40;i++)pts.push(astAt(P,AST.T0*i/40));const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineDashedMaterial({color:0xffb070,dashSize:1.2,gapSize:1,transparent:true,opacity:.55,depthWrite:false}));line.computeLineDistances();
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(.02,.16,1,10,1,true).translate(0,.5,0),new THREE.MeshBasicMaterial({color:0xffc070,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));tr.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),P.b);
+  const d=document.createElement('div');d.className='geo s';d.style.pointerEvents='none';document.body.appendChild(d);scene.add(g,rock,line,tr);
+  FIN={P,tau:AST.T0,g,rock,line,tr,d,cam:0};TM.mode='real';TM.ev='Asteroid';stopAuto();flyTo(P.U.clone().addScaledVector(P.b,.35).normalize(),170);
+  toast('<b>The asteroid is 6,000 km out.</b> It moves 20 km every second, so the clock pauses here and its last 5 minutes play at true speed.',8000)}
+function updFinale(dt){const F=FIN;if(!F)return;F.tau=Math.max(0,F.tau-dt);const P=F.P,pos=astAt(P,F.tau),km=F.tau*AST.v,alt=km*Math.sin(AST.el*DEG);
+ F.rock.position.copy(pos);F.g.position.copy(pos);const cd_=pos.distanceTo(camera.position);F.rock.visible=cd_<30;
+ // the glow is sized so the 10 km rock reads as a point of light from orbit; it brightens with the true distance (inverse square, flattened so it stays a dot)
+ F.g.scale.setScalar(cd_*.012*clamp(Math.sqrt(3000/Math.max(km,30)),1,6));
+ const inAir=alt<AST.ATM;F.tr.position.copy(pos);F.tr.material.opacity=inAir?.85:0;F.tr.scale.set(1+3*(1-alt/AST.ATM),inAir?Math.min(km,AST.ATM/Math.sin(AST.el*DEG))/63.71+.4:1,1+3*(1-alt/AST.ATM));if(inAir)F.g.material.color.setHex(0xfff4e0);
+ if(F.tau<25&&!F.cam){F.cam=1;stopAuto();flyTo(P.U.clone().addScaledVector(P.b,.04).normalize(),14)}
+ const v=pos.clone().project(camera),txt=F.tau>0?`☄️ ${km>=100?Math.round(km).toLocaleString('en-US'):km.toFixed(1)} km away · ${alt<AST.ATM?'in the air':'20 km/s'} · impact in ${cd(F.tau/86400)}`:'';if(F.t_!==txt){F.t_=txt;F.d.textContent=txt}
+ if(v.z<1&&!hidByEarth(pos)){F.d.style.display='block';F.d.style.transform=`translate(${(v.x+1)/2*innerWidth|0}px,${(1-v.y)/2*innerHeight|0}px) translate(-50%,-160%)`}else F.d.style.display='none';
+ const el=$('tm');el.style.display='block';const h=`☄️ <b>True speed:</b> the asteroid's last 5 minutes · impact in ${cd(F.tau/86400)}`;if(el._h!==h){el._h=h;el.innerHTML=h}
+ if(F.tau<=0){scene.remove(F.g,F.rock,F.line,F.tr);F.d.remove();FIN=null;IMPSKIP=true;TM.mode='normal';TM.lag=Math.max(0,(realDay()-dayAt(-66.04e6))*86400-.05)}}
 function impactWinter(){const k=simY>=-66.04e6&&simY<-65.9e6?1-(simY+66.04e6)/.14e6:0;return clamp(k,0,1)}
 // ================== sun ==================
 // near the ground at night a dim blue starlight ambient keeps land and animals faintly visible, brighter when a full moon is up (phase from the Moon's angle to the Sun)

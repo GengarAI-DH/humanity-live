@@ -10,11 +10,16 @@ function showT(html,ms,k){const el=$('toast');toastOn=true;el.innerHTML=html;{co
 let tEnd=0;function nextToast(){const el=$('toast');tipOn=false;const now=performance.now();let gap=12000-(now-tEnd);if(toastQ.length&&!toastQ[0][3]&&tAuto.length>=3)gap=Math.max(gap,60000-(now-tAuto[tAuto.length-3]));if(toastQ.length&&gap>5){if(toastOn===2)return;el.classList.remove('on');toastOn=2;setTimeout(()=>{toastOn=false;nextToast()},gap);return}const t=toastQ.shift();if(!t){el.classList.remove('on');toastOn=false;tEnd=performance.now();return}tEnd=performance.now()+t[1];if(!t[3]){tAuto.push(performance.now());if(tAuto.length>6)tAuto.shift()}showT(t[0],t[1],t[2])}
 // a card from tapping something: replaces the current card in place (no queue, no flicker); tapping it again or tapping empty ground closes it
 function tapToast(html,ms,k){if(tipOn&&$('toast').innerHTML===html)return;tipOn=true;showT(html,Math.max(ms||5000,7000),k)}
+let FOLC=null,fsT=0;
+function followThis(){const a=FOLC;if(!a||a.dead)return toast('That animal has wandered off. Tap another one.');closeTip();closeSheets();stopAuto();followAni=a;cam.alt=Math.min(cam.alt,.6);setBtn();updFStrip(1)}
+function updFStrip(dt){fsT-=dt;if(fsT>0)return;fsT=.5;let d=$('fstrip');const a=followAni;if(!a||PLAY||a.dead||!a.sp){if(d)d.style.display='none';return}
+ if(!d){d=document.createElement('div');d.id='fstrip';d.innerHTML='<span class="t"></span><button>Stop</button>';d.querySelector('button').onclick=()=>{followAni=null;setBtn();updFStrip(1)};document.body.appendChild(d)}
+ const tx=`👁 Following ${a.sp.n||spec(a.type).n}${a.act?' · '+a.act:''}`,t=d.querySelector('.t');if(t.textContent!==tx)t.textContent=tx;d.style.display='flex'}
 function closeTip(){if(!tipOn)return;tipOn=false;++tGen;$('toast').classList.remove('on');setTimeout(nextToast,380)}
 function closeSheets(){document.querySelectorAll('.sheet.on').forEach(s=>s.classList.remove('on'))}
 function openSheet(id){closeSheets();$(id).classList.add('on');if(id==='shInfo'||id==='shHist'||id==='shExt')adSlot($(id))}
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheets);
-function setBtn(){const tc=$('tcap');if(tc&&!cam.tour)tc.classList.remove('on');const f=!!followId||!!followAni;$('bFollow').classList.toggle('on',f);$('bFollow').textContent=f?'Following':'Follow';$('bTour').classList.toggle('on',cam.tour)}
+function setBtn(){try{fsT=0;updFStrip(1)}catch(e){}const tc=$('tcap');if(tc&&!cam.tour)tc.classList.remove('on');const f=!!followId||!!followAni;$('bFollow').classList.toggle('on',f);$('bFollow').textContent=f?'Following':'Follow';$('bTour').classList.toggle('on',cam.tour)}
 function pl(id){const a=AM.get(id),d=D.get(id);if(a)return`<a class="p" data-id="${id}">${esc(a.n)}</a>`;if(d)return`<a class="p dead" data-id="${id}">${esc(d.n)}</a>`;return''}
 function showTree(id){const P=i=>AM.get(i)||D.get(i),o=P(id);if(!o)return;const chip=i=>{const x=P(i);return x?`<a class="p${AM.get(i)?'':' dead'}" data-id="${i}">${esc(x.n)}</a>`:''};
  const par=[o.mo,o.fa].filter(Boolean),gp=par.flatMap(i=>{const x=P(i);return x?[x.mo,x.fa].filter(Boolean):[]}),kids=o.k||[],gk=kids.flatMap(i=>{const x=P(i);return x?x.k||[]:[]}),ggk=gk.flatMap(i=>{const x=P(i);return x?x.k||[]:[]});

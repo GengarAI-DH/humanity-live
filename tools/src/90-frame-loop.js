@@ -10,7 +10,7 @@ function trimUploads(){if(!IMS||imsN!==scene.children.length){IMS=[];scene.trave
  for(const m of IMS){const c=Math.min(m.count,m.instanceMatrix.count);if(m.instanceMatrix.version&&m.instanceMatrix.updateRange)m.instanceMatrix.updateRange.count=Math.max(16,c*16);if(m.instanceColor&&m.instanceColor.updateRange)m.instanceColor.updateRange.count=Math.max(3,c*3)}}
 function frame(T){requestAnimationFrame(frame);const now=performance.now(),_t0=now,dt=Math.min(.1,(now-last)/1000);last=now;cam.idle+=dt;
  const Y=yearAt(curDay());
- updTM(dt);advance(Y);updImpact(dt);updPlumes(dt);updMig(dt);updBig(dt);dynT-=dt;if(dynT<=0){dynT=1.2;updDyn()}
+ updTM(dt);updFinale(dt);try{updAurora(dt);updSkyX(dt);updFStrip(dt)}catch(e){console.error(e)}advance(Y);updImpact(dt);updPlumes(dt);updMig(dt);updBig(dt);dynT-=dt;if(dynT<=0){dynT=1.2;updDyn()}
  // climate
  if(now-climT>(catching?1500:5000)){climT=now;if(season()!==SEASM){SEASM=new Date().getUTCMonth();if(SEASM!==-1&&simY>-3e6){CLIM.sig=null;applyClimate(simY,true);treesDirty=true}}if(applyClimate(simY)){for(const s of S)if(s.built)buildTrees(s,s.rt!==undefined&&s.tier<0?s.rt:s.tier);wildPlants()}}
  treeCull(dt);cbT-=dt;if(cbT<=0){cbT=catching?.15:.4;if(checkBuilds(false))treesDirty=true}if(treesDirty)rebuildTrees();

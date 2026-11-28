@@ -30,7 +30,7 @@ const TM={mode:'normal',lag:0,t:0,rate:1/365.25,speed:4,ev:''};
 function realDay(){return(Date.now()-started)/864e5+(window.__OFF||0)}
 function curDay(){return realDay()-TM.lag/86400}
 function slowFor(b){if(catching||TM.mode==='slow')return;if(yps(curDay())<.2)return;TM.mode='slow';TM.t=b.t.startsWith('Asteroid')?120:90;TM.ev=b.t}
-function updTM(dt){if(TM.mode==='slow'){TM.lag+=dt*(1-TM.rate);TM.t-=dt;if(TM.t<=0)TM.mode='catch'}else if(TM.mode==='catch'){TM.lag-=dt*(TM.speed-1);if(TM.lag<=0){TM.lag=0;TM.mode='normal'}}
+function updTM(dt){if(TM.mode==='real'){TM.lag+=dt;if(FIN)return}else if(TM.mode==='slow'){TM.lag+=dt*(1-TM.rate);TM.t-=dt;if(TM.t<=0)TM.mode='catch'}else if(TM.mode==='catch'){TM.lag-=dt*(TM.speed-1);if(TM.lag<=0){TM.lag=0;TM.mode='normal'}}
  const el=$('tm');if(TM.mode==='normal'){el.style.display='none';return}el.style.display='block';el.innerHTML=TM.mode==='slow'?`⏸ <b>Slow motion:</b> ${esc(TM.ev)} · 1 second = 1 day · ${Math.ceil(TM.t)}s`:`⏩ <b>Catching up to the present</b> · 4 years per second · ${Math.ceil(TM.lag/(TM.speed-1))}s`}
 let catching=false,catchFrom=0;
 function advance(Y){meteorStep(Y-simY);
