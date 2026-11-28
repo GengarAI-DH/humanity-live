@@ -1,11 +1,11 @@
 [
  {
   "when": "Nov 27",
-<<<<<<< Updated upstream
-  "text": "Night-side city lights now glow by size: big metros shine wider and brighter from space while small towns stay pinpricks. Countdown labels for upcoming events no longer pile on top of each other when two land on the same city, the \"Add to album\" button after opening a card pack works again on iPhone, and planes and ships cost less to animate."
-=======
   "text": "Dinosaurs look like themselves: T. rex and other two-legged dinosaurs now lean forward with a deep skull, long tapering tail, big thighs and tiny arms; Triceratops gets its huge head, swept-back frill, two long brow horns and a beak"
->>>>>>> Stashed changes
+ },
+ {
+  "when": "Nov 27",
+  "text": "Night-side city lights now glow by size: big metros shine wider and brighter from space while small towns stay pinpricks. Countdown labels for upcoming events no longer pile on top of each other when two land on the same city, the \"Add to album\" button after opening a card pack works again on iPhone, and planes and ships cost less to animate."
  },
  {
   "when": "Nov 27",
@@ -158,9 +158,5 @@
  {
   "when": "Nov 27",
   "text": "Famous landmarks get built in their real years, from Stonehenge to Mount Rushmore and the Burj Khalifa; the Grand Canyon carves itself"
- },
- {
-  "when": "Nov 27",
-  "text": "Follow a species and get an alert when it goes extinct; cloud on/off button; tap anywhere for a card about that spot"
  }
 ]
