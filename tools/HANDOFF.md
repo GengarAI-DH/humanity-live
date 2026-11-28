@@ -11,7 +11,7 @@ How to use it:
 - 2026-11-27: 5 entries in public/events.json are dated before the clock starts (-71.25 million years), so they never appear. Move them into the clock's range or remove them. (data checker)
 
 ## species (species and inventions)
-- 2026-11-27: 40 species in public/species.json have empty fossil-site lists. Add real sites from the Paleobiology Database. (data checker)
+- 2026-11-27: 10 insect groups in public/species.json (i_*) have no fossil-site lists; they are worldwide ('all'), so they need none unless the data checker should skip them. (species run)
 
 ## cards
 - 2026-11-27: 695 of 1,477 cards in public/cards.json have no fact line (mostly milestones and events). Teach tools/cards.js to take facts from the matching DISC/BIG entries or data files. (data checker)
