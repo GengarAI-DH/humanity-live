@@ -5,6 +5,7 @@
 - applyClimate now also repaints when a dated lake changes state (lakeSig: reservoir fill in quarters, historic lakes in eighths; 0 outside 1590-2030 so no extra repaints elsewhere).
 - Source: Natural Earth 1:10m Historic lakes (ne_10m_lakes_historic, public domain, naturalearthdata.com; fetched from the nvkelso/natural-earth-vector GitHub mirror), simplified to 0.04 degrees and stored in public/water.json key "h" ([name, full until, gone by, ring]) by tools/lakes_hist.py. Dam and filling dates from the dams' own histories (well known, listed in RESV).
 - Numbers: water.json 352 KB -> 360 KB (+7.8 KB, loaded lazily as before); index.html +2.6 KB. No per-frame work (texture painting only). Smoke case 1965 checks dates, the ice test, the 1950 vs 2025 Aral Sea and Lake Volta pixels.
+- Also seen: rivers are still drawn across the ice-age ice sheets (skip river lines whose middle is under ICE, same test as lakeIce). The Claude artifact copy can't serve .bin files, so the topo/*.bin mountain tiles only work on the website; rename them to .png-free text (for example base64 .txt) or accept it.
 - Next: Natural Earth 10m lakes and rivers (river width by discharge from scalerank/strokeweight), Three Gorges (2003-2006) and other big river reservoirs that 50m data lacks, the Zuiderzee before the 1932 Afsluitdijk and its polders (1930/1942/1957/1968), Mega-Chad and green-Sahara lakes 9000-3500 BC, ice-age proglacial lakes (Agassiz, Missoula, Bonneville) on their dates.
 
 ## 2026-11-27: sharper mountains up close (upgrade 1, first part)
