@@ -1,5 +1,15 @@
 # Map log (cartographer job, newest first)
 
+## 2026-11-28 (midday): run type C (speed): stop re-sending empty buffers to the GPU every frame; no layout reads for the big map labels
+- Type: C (speed; rotation after B). Sentry (embergate/humanity-live): no issues in the last 24 h. HANDOFF graphics items left as they are (all are long build items; none is a quick fix).
+- Found with a per-function timer (wraps every per-frame update through the HS.X test hook) and a WebGL hook counting bufferSubData bytes per frame.
+- Biggest: the two particle systems (5,000 and 4,000 points) uploaded all their buffers (128 KB + 160 KB) every frame even with no particles; the satellite cloud computed 900 positions and uploaded 10.8 KB every frame in every era (also before 1957). Now: nothing is computed or sent when empty, only live particles/satellites are sent, and the empty objects are hidden. Gait buffers (aGt/aGait) are trimmed to the animals in use like the instance matrices; night-light colours send only the used part.
+- GPU upload per frame (software WebGL, 430x900): Cretaceous ground 349 -> 50 KB; New York 1960 ground 465 -> 143 KB.
+- updBigLabels (continent/ocean names above altitude 28) read getBoundingClientRect after writing styles for every label every frame (forced layout) and read localStorage every frame; it now uses sizes measured once per label set (re-measured every 2 s for late fonts), the setting once a second, and caches the deep-time plate position per 20,000 years. 0.82 -> 0.27 ms/frame at 70 Ma from space.
+- updWild: one angle-to-camera per zone per frame instead of up to 10 acos per animal (z.ang). updTags skips people and animals beyond the tag distance before building their label text.
+- perf.py totals (noisy on this machine): JS 39.1 -> 38.2 ms summed over 10 views; draw calls 441 -> 440; triangles unchanged. First load: index.html +0.9 KB.
+- Next: nightCols sends 408 KB of fire and light colours every 0.25 s (34k points; only the flicker changes; send lights only when the day/night value moves, flicker fewer fires); updWild is still 1.5-2.7 ms at ground level (per-animal string building for a.act, WA.filter for prey); updTags 0.7 ms average (6 ms spikes every 0.12 s from gY per home).
+
 ## 2026-11-28 (morning): run type B (map accuracy): dinosaur-era continents and coastlines from the PALEOMAP PaleoDEMs (planet plan step 3, first part)
 - Type: B (map accuracy; rotation after A). Also planet plan step 3. Sentry: no issues in the last 24 h. HANDOFF: the "night on the ground is almost black" item was already done (AMB_NIGHT moonlit ambient in updSun); line removed.
 - License: Zenodo record 5460860 (Scotese & Wright 2018, PALEOMAP Paleodigital Elevation Models for the Phanerozoic) is CC BY 4.0, so reuse with credit is allowed.

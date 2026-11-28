@@ -7,7 +7,7 @@ function checkBuilds(all){let ch=false;for(const s of S){const k=siteKey(s);if(k
 let cbT=0,IMS=null,imsN=-1;
 // upload only the part of each instance buffer that is in use (three.js would otherwise send the whole buffer every frame)
 function trimUploads(){if(!IMS||imsN!==scene.children.length){IMS=[];scene.traverse(o=>{if(o.isInstancedMesh)IMS.push(o)});imsN=scene.children.length}
- for(const m of IMS){const c=Math.min(m.count,m.instanceMatrix.count);if(m.instanceMatrix.version&&m.instanceMatrix.updateRange)m.instanceMatrix.updateRange.count=Math.max(16,c*16);if(m.instanceColor&&m.instanceColor.updateRange)m.instanceColor.updateRange.count=Math.max(3,c*3)}}
+ for(const m of IMS){const c=Math.min(m.count,m.instanceMatrix.count);if(m.instanceMatrix.version&&m.instanceMatrix.updateRange)m.instanceMatrix.updateRange.count=Math.max(16,c*16);if(m.instanceColor&&m.instanceColor.updateRange)m.instanceColor.updateRange.count=Math.max(3,c*3);const ga=m.geometry.attributes.aGt||m.geometry.attributes.aGait;if(ga&&ga.updateRange)ga.updateRange.count=Math.max(ga.itemSize,c*ga.itemSize)}}
 function frame(T){requestAnimationFrame(frame);const now=performance.now(),_t0=now,dt=Math.min(.1,(now-last)/1000);last=now;cam.idle+=dt;
  const Y=yearAt(curDay());
  updTM(dt);updFinale(dt);try{updAurora(dt);updSkyX(dt);updFStrip(dt)}catch(e){console.error(e)}advance(Y);updImpact(dt);updPlumes(dt);updMig(dt);updBig(dt);dynT-=dt;if(dynT<=0){dynT=1.2;updDyn()}

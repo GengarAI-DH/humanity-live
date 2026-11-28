@@ -6,12 +6,13 @@ function PSys(max,add){const g=new THREE.BufferGeometry();g.setAttribute('positi
 let PSA=null,PSN=null;
 // emit: p position, v velocity (units/s), life s, s0->s1 size (world units), c0->c1 rgba, g gravity toward planet centre, dr drag
 function emit(sys,p,v,life,s0,s1,c0,c1,g,dr){if(!PSA)return;if(PSCALE<1&&Math.random()>PSCALE)return;const S_=sys==='a'?PSA:PSN;if(S_.L.length>=S_.max)S_.L.shift();S_.L.push({x:p.x,y:p.y,z:p.z,vx:v.x,vy:v.y,vz:v.z,life,age:0,s0,s1,c0,c1,g:g||0,dr:dr||0})}
-function stepPS(S_,dt){const P=S_.g.attributes.position.array,C=S_.g.attributes.aC.array,Z=S_.g.attributes.aS.array;let n=0;const keep=[];
+const _psv=new THREE.Vector2();
+function stepPS(S_,dt){if(!S_.L.length&&!S_.n0){S_.p.visible=false;return}const P=S_.g.attributes.position.array,C=S_.g.attributes.aC.array,Z=S_.g.attributes.aS.array;let n=0;const keep=[];
  for(const q of S_.L){q.age+=dt;if(q.age>=q.life)continue;if(q.g){const l=Math.hypot(q.x,q.y,q.z);q.vx-=q.x/l*q.g*dt;q.vy-=q.y/l*q.g*dt;q.vz-=q.z/l*q.g*dt}if(q.dr){const f=Math.max(0,1-q.dr*dt);q.vx*=f;q.vy*=f;q.vz*=f}
   q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt;const l2=Math.hypot(q.x,q.y,q.z);if(q.g&&l2<R+.001){continue}keep.push(q);const k=q.age/q.life;
   P[n*3]=q.x;P[n*3+1]=q.y;P[n*3+2]=q.z;for(let j=0;j<4;j++)C[n*4+j]=q.c0[j]+(q.c1[j]-q.c0[j])*k;Z[n]=q.s0+(q.s1-q.s0)*k;n++}
- S_.L=keep;S_.g.setDrawRange(0,n);S_.g.attributes.position.needsUpdate=S_.g.attributes.aC.needsUpdate=S_.g.attributes.aS.needsUpdate=true;
- const hb=renderer.getDrawingBufferSize(new THREE.Vector2()).y;S_.p.material.uniforms.sc.value=hb*.5/Math.tan(camera.fov*DEG/2)}
+ S_.L=keep;S_.g.setDrawRange(0,n);S_.n0=n;S_.p.visible=n>0;const GA=S_.g.attributes;if(n){GA.position.updateRange.count=n*3;GA.aC.updateRange.count=n*4;GA.aS.updateRange.count=n;GA.position.needsUpdate=GA.aC.needsUpdate=GA.aS.needsUpdate=true}
+ const hb=renderer.getDrawingBufferSize(_psv).y;S_.p.material.uniforms.sc.value=hb*.5/Math.tan(camera.fov*DEG/2)}
 function tanOf(U){const N=new THREE.Vector3(0,1,0).addScaledVector(U,-U.y);if(N.lengthSq()<1e-6)N.set(1,0,0).addScaledVector(U,-U.x);N.normalize();return{N,E:new THREE.Vector3().crossVectors(N,U)}}
 const V_=(x,y,z)=>new THREE.Vector3(x,y,z),rv=()=>V_(rnd()-.5,rnd()-.5,rnd()-.5).normalize();
 function gnd(U){return Math.max(0,hDir(U.x,U.y,U.z))}

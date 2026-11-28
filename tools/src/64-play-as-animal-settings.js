@@ -53,15 +53,17 @@ async function cardWitness(title){if(!LIVE)return;if(!CARDS)await cLoad();if(!CA
  $('rotT').onclick=()=>{const on=!document.body.classList.contains('rmini');document.body.classList.toggle('rmini',on);LS.set('hl_rmini',on?'1':'0');sync()}})();
 // ---- continent, ocean and region names when zoomed out, as they were at the time ----
 let BIGL=[],bigEl=null;(async()=>{try{const j=await (await fetch('regions.json')).json();BIGL=j.labels||[]}catch(e){}})();
-const _bl=new THREE.Vector3(),_bc=new THREE.Vector3();
+const _bl=new THREE.Vector3(),_bc=new THREE.Vector3();let blT=0,blOff=false,blMs=0;
+// no layout reads per frame: label sizes are measured once per label set (and every 2 s for late fonts); setting read once a second
 function updBigLabels(){if(!bigEl){bigEl=document.createElement('div');bigEl.id='bigL';document.body.appendChild(bigEl)}
- const show=cam.alt>28&&BIGL.length&&!document.body.classList.contains('stream')&&LS.get('hl_bigl')!=='0';if(!show){if(bigEl.childElementCount)bigEl.innerHTML='';bigEl._k='';return}
+ const now=performance.now();if(now-blT>1000){blT=now;blOff=LS.get('hl_bigl')==='0'||document.body.classList.contains('stream')}
+ const show=cam.alt>28&&BIGL.length&&!blOff;if(!show){if(bigEl.childElementCount)bigEl.innerHTML='';bigEl._k='';return}
  const op=Math.min(1,(cam.alt-28)/20),Y=simY,live=BIGL.filter(l=>Y>=l[3]&&Y<l[4]),key=live.map(l=>l[0]).join('|');
- if(bigEl._k!==key){bigEl._k=key;bigEl.innerHTML=live.map(l=>`<span class="${l[5]}" title="${esc(l[6]||'')}">${esc(l[0])}</span>`).join('')}
- _bc.copy(camera.position).normalize();const kids=bigEl.children;
- for(let i=0;i<live.length;i++){const l=live[i],el=kids[i];if(!el)continue;const p=Y<-5e6?paleoPos(l[1],l[2],Y):[l[1],l[2]],v=v3(p[0],p[1],R+1.5);_bl.copy(v).normalize();const f=_bl.dot(_bc);
-  if(f<.25){el.style.opacity=0;continue}v.project(camera);el.style.left=((v.x+1)/2*innerWidth)+'px';el.style.top=((1-v.y)/2*innerHeight)+'px';el.style.opacity=(op*Math.min(1,(f-.25)/.25)).toFixed(2)}
- bigEl._live=live;const bx=[];for(const kd of 'cor')for(let i=0;i<live.length;i++){const el=kids[i];if(!el||live[i][5]!==kd||el.style.opacity==='0')continue;const r=el.getBoundingClientRect();if(bx.some(b=>r.left<b.right+6&&r.right>b.left-6&&r.top<b.bottom+2&&r.bottom>b.top-2)){el.style.opacity=0;continue}bx.push(r)}}
+ if(bigEl._k!==key){bigEl._k=key;bigEl.innerHTML=live.map(l=>`<span class="${l[5]}" title="${esc(l[6]||'')}">${esc(l[0])}</span>`).join('');blMs=0}
+ _bc.copy(camera.position).normalize();const kids=bigEl.children;if(now-blMs>2000){blMs=now;for(const el of kids){el._w=el.offsetWidth;el._h=el.offsetHeight}}const pk=Y<-5e6?Math.round(Y/2e4):0;
+ for(let i=0;i<live.length;i++){const l=live[i],el=kids[i];if(!el)continue;if(l._pk!==pk||!l._v){l._pk=pk;const p=Y<-5e6?paleoPos(l[1],l[2],Y):[l[1],l[2]];l._v=v3(p[0],p[1],R+1.5)}const v=_bl.copy(l._v);const f=v.dot(_bc)/(R+1.5);
+  if(f<.25){el._o='0';if(el.style.opacity!=='0')el.style.opacity=0;continue}v.project(camera);const x=(v.x+1)/2*innerWidth,y=(1-v.y)/2*innerHeight;el._x=x;el._y=y;el.style.left=x+'px';el.style.top=y+'px';el._o=(op*Math.min(1,(f-.25)/.25)).toFixed(2);el.style.opacity=el._o}
+ bigEl._live=live;const bx=[];for(const kd of 'cor')for(let i=0;i<live.length;i++){const el=kids[i];if(!el||live[i][5]!==kd||el._o==='0')continue;const hw=(el._w||0)/2,hh=(el._h||0)/2,r={left:el._x-hw,right:el._x+hw,top:el._y-hh,bottom:el._y+hh};if(bx.some(b=>r.left<b.right+6&&r.right>b.left-6&&r.top<b.bottom+2&&r.bottom>b.top-2)){el.style.opacity=0;continue}bx.push(r)}}
 const LBLK={c:'Landmass',o:'Ocean or sea',r:'Region'};
 function showRegion(l){const rows=[['What it is',LBLK[l[5]]||'Place'],['When',`${fmtY(Math.max(l[3],-71.25e6))} to ${l[4]>=2100?'today and beyond':fmtY(l[4])}`]];if(l[6])rows.push(['About',l[6]]);if(simY<-5e6)rows.push(['Today',placeName(v3(l[1],l[2],1))||'—']);showWikiThing(l[0],rows,l[7]||l[0]);
  const b=document.createElement('button');b.textContent='Fly closer';b.onclick=()=>{stopAuto();const p=simY<-5e6?paleoPos(l[1],l[2],simY):[l[1],l[2]];flyTo(v3(p[0],p[1],1),Math.max(8,cam.alt/3));closeSheets()};$('wiki').querySelector('.btns').prepend(b)}

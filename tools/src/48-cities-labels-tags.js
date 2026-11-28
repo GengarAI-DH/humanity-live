@@ -96,7 +96,7 @@ function initTags(){for(let i=0;i<44;i++){const d=document.createElement('div');
 const _w=new THREE.Vector3();
 function locW(s,x,y,z){return[s.o[0]+s.e[0]*x+s.so[0]*z+s.u[0]*y,s.o[1]+s.e[1]*x+s.so[1]*z+s.u[1]*y,s.o[2]+s.e[2]*x+s.so[2]*z+s.u[2]*y]}
 function updTags(){if(!tagsOn)return;const lim=1.9;if(cam.alt>lim){TAGS.forEach(d=>d.style.display='none');return}
- const cp=camera.position,C=[],maxD=cam.alt*3+.35,add=(x,y,z,txt,sub,cls,pr,lift)=>{const dx=x-cp.x,dy=y-cp.y,dz=z-cp.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>maxD)return;C.push([x,y,z,txt,sub,cls,d-pr,lift||.035])};
+ const cp=camera.position,C=[],maxD=cam.alt*3+.35,add=(x,y,z,txt,sub,cls,pr,lift)=>{const dx=x-cp.x,dy=y-cp.y,dz=z-cp.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>maxD)return;C.push([x,y,z,txt,sub,cls,d-pr,lift||.035])},far=(x,y,z)=>{const dx=x-cp.x,dy=y-cp.y,dz=z-cp.z;return dx*dx+dy*dy+dz*dz>maxD*maxD};
  const ct=cam.t;
  for(const s of S){if(!s.built||!s.U||s.U.angleTo(ct)>.05)continue;
   for(const l of s.lmk||[]){const w=locW(s,l[0],l[1],l[2]);add(w[0],w[1],w[2],l[3],'','l',.6,.012)}
@@ -105,9 +105,9 @@ function updTags(){if(!tagsOn)return;const lim=1.9;if(cam.alt>lim){TAGS.forEach(
   for(const f of s.feat||[]){const w=locW(s,f[0],f[1],f[2]);add(w[0],w[1],w[2],f[3],'','',.05,.012)}
   for(const tr of s.trees||[]){if(!tr[8])continue;const w=locW(s,tr[1],tr[2],tr[3]);add(w[0],w[1],w[2],tr[8],'','g',-.4,.05*tr[4]*(tr[7]||1))}
   for(const f of s.fires||[]){if(s.tier>2||s.tier<0)continue;const w=locW(s,f[0],f[1],f[2]);add(w[0],w[1],w[2],'Campfire','','',0,.03)}}
- for(const a of A){if(!a.vis||a.wx===undefined)continue;const age=Math.floor(simY-a.b);add(a.wx,a.wy,a.wz,a.n,(a.tr?'travelling · ':'')+(a.ill&&a.ill!=='the common cold'?'sick: '+a.ill+' · ':'')+(age<14?'child, '+age:a.j),'p',.15)}
- for(const a of ANIMS){if(a.wx===undefined)continue;add(a.wx,a.wy,a.wz,VEH.has(a.type)?vehName(a.type,simY,S[a.s]):AN[a.type]||a.type,VEH.has(a.type)?'':[a.dom===1?'domestic':a.dom===3?'projected':'',a.dom===3?'':dietOf(a.type),sizeTxt(a.type)].filter(Boolean).join(' · '),'a',.1,.04*(ANI[a.type]?ANI[a.type][1]:1))}
- for(const a of WA){if(a.wx===undefined)continue;const sp=a.sp;if(a.dead)continue;add(a.wx,a.wy,a.wz,sp.n,(a.run?'hunting · ':a.flee?'fleeing · ':'')+(a.type==='locals'?(simY<-10000?'living off the land':'local people'):sp.hom?'wild band':[sp.diet,sp.size].filter(Boolean).join(' · ')),'a',.1,.035*sp.s*(sp.sy||1)*(sp.m==='sauro'?2.4:sp.m==='thero'?1.3:1))}
+ for(const a of A){if(!a.vis||a.wx===undefined||far(a.wx,a.wy,a.wz))continue;const age=Math.floor(simY-a.b);add(a.wx,a.wy,a.wz,a.n,(a.tr?'travelling · ':'')+(a.ill&&a.ill!=='the common cold'?'sick: '+a.ill+' · ':'')+(age<14?'child, '+age:a.j),'p',.15)}
+ for(const a of ANIMS){if(a.wx===undefined||far(a.wx,a.wy,a.wz))continue;add(a.wx,a.wy,a.wz,VEH.has(a.type)?vehName(a.type,simY,S[a.s]):AN[a.type]||a.type,VEH.has(a.type)?'':[a.dom===1?'domestic':a.dom===3?'projected':'',a.dom===3?'':dietOf(a.type),sizeTxt(a.type)].filter(Boolean).join(' · '),'a',.1,.04*(ANI[a.type]?ANI[a.type][1]:1))}
+ for(const a of WA){if(a.wx===undefined||a.dead||far(a.wx,a.wy,a.wz))continue;const sp=a.sp;add(a.wx,a.wy,a.wz,sp.n,(a.run?'hunting · ':a.flee?'fleeing · ':'')+(a.type==='locals'?(simY<-10000?'living off the land':'local people'):sp.hom?'wild band':[sp.diet,sp.size].filter(Boolean).join(' · ')),'a',.1,.035*sp.s*(sp.sy||1)*(sp.m==='sauro'?2.4:sp.m==='thero'?1.3:1))}
  for(const b of BIRDL)add(b[0],b[1],b[2],b[3],'','a',.05,.02);
  for(const z of WZ)if(z.fire&&z.U&&z.U.angleTo(ct)<.05)add(z.o[0],z.o[1],z.o[2],'Campfire','','',0,.03);
  for(const z of WZ){if(!z.U||!z.trees||z.U.angleTo(ct)>.04)continue;for(const tr of z.trees){if(!tr[8])continue;const w=locW(z,tr[1],tr[2],tr[3]);add(w[0],w[1],w[2],tr[8],'','g',-.4,.05*tr[4]*(tr[7]||1))}}

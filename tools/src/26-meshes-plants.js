@@ -94,8 +94,8 @@ function rebuildPoints(){const fp=[],ls=[];fireSite=[];lightSite=[];
  fireP.geometry.dispose();fireP.geometry=new THREE.BufferGeometry();fireP.geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(fp),3));fireP.geometry.setAttribute('color',new THREE.BufferAttribute(new Float32Array(fp.length),3));
  lightP.geometry.dispose();lightP.geometry=new THREE.BufferGeometry();lightP.geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(ls),3));lightP.geometry.setAttribute('color',new THREE.BufferAttribute(new Float32Array(ls.length),3));}
 function nightCols(){const f=fireP.geometry.attributes.color,l=lightP.geometry.attributes.color;if(!f||!l)return;
- for(let i=0;i<fireSite.length;i++){const s=fireSite[i],n=clamp(.15-s.day*3,.25,1)*(.85+rnd()*.3);f.setXYZ(i,1*n,.55*n,.18*n)}f.needsUpdate=true;
- for(let i=0;i<lightSite.length;i++){const s=lightSite[i],n=clamp(-s.day*5+.1,0,1)*(s.tier>=6?1:.6);l.setXYZ(i,1*n,.82*n,.5*n)}l.needsUpdate=true}
+ for(let i=0;i<fireSite.length;i++){const s=fireSite[i],n=clamp(.15-s.day*3,.25,1)*(.85+rnd()*.3);f.setXYZ(i,1*n,.55*n,.18*n)}if(fireSite.length){f.updateRange.count=fireSite.length*3;f.needsUpdate=true}
+ for(let i=0;i<lightSite.length;i++){const s=lightSite[i],n=clamp(-s.day*5+.1,0,1)*(s.tier>=6?1:.6);l.setXYZ(i,1*n,.82*n,.5*n)}if(lightSite.length){l.updateRange.count=lightSite.length*3;l.needsUpdate=true}}
 function rebuildRails(){RAILP=[];const pts=[],c6=S.filter(s=>s.built&&s.tier>=6);
  for(let i=0;i<c6.length;i++)for(let j=i+1;j<c6.length;j++){const a=c6[i],b=c6[j],ang=a.U.angleTo(b.U)/DEG;if(ang>26)continue;let ok=true;const seg=24,P=[];
   for(let k=0;k<=seg;k++){const v=a.U.clone().lerp(b.U,k/seg).normalize(),h=hDir(v.x,v.y,v.z);if(h<0){ok=false;break}P.push(v.multiplyScalar(R+h+.004))}
