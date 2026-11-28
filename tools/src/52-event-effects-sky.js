@@ -65,8 +65,13 @@ const GPOLE=[[1900,78.68,-68.79],[1950,78.55,-68.85],[1980,78.81,-70.76],[2000,7
 function gPole(Y){if(Y<1600)return v3(90,0,1);if(Y<1900){const k=(Y-1600)/300;return v3(90,0,1).lerp(v3(GPOLE[0][1],GPOLE[0][2],1),k).normalize()}let a=GPOLE[GPOLE.length-1];for(let i=1;i<GPOLE.length;i++)if(Y<GPOLE[i][0]){const p=GPOLE[i-1],q=GPOLE[i],k=(Y-p[0])/(q[0]-p[0]);return v3(lerp(p[1],q[1],k),lerp(p[2],q[2],k),1)}return v3(a[1],a[2],1)}
 // Kp right now: the sunspot cycle sets the average; storms come and go every few tens of seconds of real time (at these clock speeds a real 3-hour Kp value would flash by too fast to see)
 function hsh(n){const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)}
-let AUR=null,KP=1.5;
-function kpNow(t){const S=ssnAt(simY),b=1.2+.008*S,u=t/40,i=Math.floor(u),f=u-i,s=f*f*(3-2*f),n=lerp(hsh(i),hsh(i+1),s);let k=b+1.8*(n-.35);const r=hsh(i*7+3);if(r<.06*(.3+S/150))k+=(3+3*hsh(i*13+5))*Math.sin(Math.PI*f);return clamp(k,0,9)}
+let AUR=null,KP=1.5,KPL=0;
+// When the sim's date is within a week of today's real date, use the real measured Kp from NOAA SWPC (3-hour planetary K index, past 7 days).
+let LKP=null,lkpT=0;
+function realYearNow(){const d=new Date(),y=d.getUTCFullYear();return y+(d-Date.UTC(y,0,1))/(Date.UTC(y+1,0,1)-Date.UTC(y,0,1))}
+function liveKp(){if(Math.abs(simY-realYearNow())>7/365.25)return null;const now=performance.now();if(now>lkpT){lkpT=now+9e5;fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json').then(r=>r.ok?r.json():null).then(d=>{if(Array.isArray(d))LKP=d.map(e=>Array.isArray(e)?[Date.parse(e[0]+'Z'),+e[1]]:[Date.parse(e.time_tag+'Z'),+e.Kp]).filter(e=>isFinite(e[0])&&isFinite(e[1]))}).catch(()=>{})}
+ if(!LKP||!LKP.length)return null;const y=Math.floor(simY),ms=Date.UTC(y,0,1)+(simY-y)*(Date.UTC(y+1,0,1)-Date.UTC(y,0,1));let best=null;for(const e of LKP)if(e[0]<=ms&&ms-e[0]<3*36e5)best=e[1];return best}
+function kpNow(t){{const k=liveKp();if(k!=null){KPL=1;return k}KPL=0}const S=ssnAt(simY),b=1.2+.008*S,u=t/40,i=Math.floor(u),f=u-i,s=f*f*(3-2*f),n=lerp(hsh(i),hsh(i+1),s);let k=b+1.8*(n-.35);const r=hsh(i*7+3);if(r<.06*(.3+S/150))k+=(3+3*hsh(i*13+5))*Math.sin(Math.PI*f);return clamp(k,0,9)}
 function aurMesh(){const N=160,pos=new Float32Array((N+1)*2*3),aH=new Float32Array((N+1)*2),aS=new Float32Array((N+1)*2),idx=[];for(let i=0;i<=N;i++){aH[i*2]=0;aH[i*2+1]=1;aS[i*2]=aS[i*2+1]=i/N;if(i<N){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2)}}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('aH',new THREE.BufferAttribute(aH,1));g.setAttribute('aS',new THREE.BufferAttribute(aS,1));g.setIndex(idx);
  const m=new THREE.ShaderMaterial({uniforms:{T:{value:0},I:{value:.5},red:{value:0},band:{value:0},sunD:{value:new THREE.Vector3(1,0,0)}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
@@ -85,15 +90,15 @@ function updAurora(dt){if(QG&&QG.lvl>=2&&AUR){for(const me of AUR.all)me.visible
   const ok=cam.alt>12&&cam.alt<200&&D.dot(sunDir)<-.15&&D.angleTo(cam.t)<1.1&&!hidByEarth(w);if(!ok){d.style.display='none';continue}const v=w.project(camera);if(v.z>1){d.style.display='none';continue}
   d.style.display='block';d.textContent=`${j?'Southern':'Northern'} lights · Kp ${KP.toFixed(0)}`;d.style.transform=`translate(${(v.x+1)/2*innerWidth|0}px,${(1-v.y)/2*innerHeight|0}px) translate(-50%,-50%)`}}
 function aurInfo(j){const S=ssnAt(simY),k=KP,lat=Math.round(67-2*k),cyc=simY>=1755&&simY<2030.5?`Sunspot number about ${Math.round(S)} (real solar cycle, SILSO)`:simY>=1645&&simY<1715?'The Maunder Minimum: the Sun has almost no sunspots, and aurorae are rare':simY>=2030.5?'An average solar cycle (projected)':'An average solar cycle (the Sun\'s cycles this far back can\'t be dated)';
- toast(`<b>${j?'Southern lights (aurora australis)':'Northern lights (aurora borealis)'}</b> · Kp ${k.toFixed(1)}<br><span class="sm">Particles from the Sun pour down Earth's magnetic field near the poles and make the air glow: green oxygen 100 to 200 km up, red oxygen higher, purple nitrogen at the bottom edge in strong storms. Tonight it reaches about ${lat}° magnetic latitude. ${cyc}.</span>`,9000)}
+ toast(`<b>${j?'Southern lights (aurora australis)':'Northern lights (aurora borealis)'}</b> · Kp ${k.toFixed(1)}<br><span class="sm">Particles from the Sun pour down Earth's magnetic field near the poles and make the air glow: green oxygen 100 to 200 km up, red oxygen higher, purple nitrogen at the bottom edge in strong storms. Tonight it reaches about ${lat}° magnetic latitude.${KPL?' This is the real Kp measured by NOAA right now.':''} ${cyc}.</span>`,9000)}
 // ---- sky events you can watch: the Moon's shadow, comets, new stars, aurorae, meteor storms ----
 const GEOP=[80.7,-72.7];
 function skyScene(U,e,label){if(!e)return;specInit();const T=tanOf(U),k=e.k,x=e.x||{},sc={k:'sky',kind:k,U,T,t:0,dur:k==='eclipse'||k==='lunar'?45:k==='aurora'?55:k==='meteors'?40:k==='flare'?30:50,x};
  const big=k==='eclipse'||k==='aurora'||k==='lunar'||k==='flare'||(k==='comet'&&x.mag!=null&&x.mag<=-3)||(k==='supernova'&&x.mag!=null&&x.mag<=-4);
- if(big)toast(`<b>${esc(label)}</b>${e.f?'<br><small>'+esc(e.f.length>170?e.f.slice(0,167)+'…':e.f)+'</small>':''}`,big?8000:5000);
+ if(big&&!e.quiet)toast(`<b>${esc(label)}</b>${e.f?'<br><small>'+esc(e.f.length>170?e.f.slice(0,167)+'…':e.f)+'</small>':''}`,big?8000:5000);
  if(k==='eclipse'){const add=(ang,op,col)=>{const g=new THREE.SphereGeometry(R+3.4,48,8,0,Math.PI*2,0,ang),m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));m.renderOrder=3;scene.add(m);
    const up=new THREE.Vector3(0,1,0),sw=22*DEG;SPEC.push({m,t:0,life:sc.dur,up:(mm,kk)=>{const V=U.clone().applyAxisAngle(T.N,-(kk-.5)*sw);mm.quaternion.setFromUnitVectors(up,V);mm.material.opacity=op*Math.sin(Math.PI*kk)}})};
-  add(55*DEG,.28,0x05070c);add(Math.max(.6,(x.wd||150)/2/111)*DEG*1.6,.8,0x000000);slabel(U,'🌑 '+label,sc.dur);skyInset('solar',sc.dur,label)}
+  add(55*DEG,.28,0x05070c);add(Math.max(.6,(x.wd||150)/2/111)*DEG*1.6,.8,0x000000);slabel(U,'🌑 '+label,sc.dur);if(!e.quiet)skyInset('solar',sc.dur,label)}
  else if(k==='lunar'){LUNS={t:0,dur:sc.dur};skyInset('lunar',sc.dur,label);slabel(U,'🌕 '+label,sc.dur)}
  else if(k==='flare'){FLR={t:0,dur:sc.dur,big:1};slabel(U,'☀️ '+label,sc.dur)}
  else if(k==='aurora'){const pole=v3(GEOP[0],GEOP[1],1),rad=(x.alat!=null?90-x.alat:/Miyake|Assyrian/.test(label)?40:42)*DEG,red=rad>45*DEG,N=128,RR=rad>30*DEG?[22*DEG,(rad+22*DEG)/2,rad]:[rad];

@@ -156,6 +156,7 @@ function srchAll(q){q=q.trim().toLowerCase();if(q.length<2)return[];const R_=[],
  for(const b of BIG){const t=b.t||b[1],y=b.y!==undefined?b.y:b[0],la=b.lat!==undefined?b.lat:b[2],lo=b.lon!==undefined?b.lon:b[3];if(!has(t))continue;R_.push({s:y<=Y?2:2.5,n:t,k:y<=Y?'Happened':'Coming',w:fmtY(y),go:la!=null?()=>{const q2=paleoPos(la,lo,Y);flyTo(v3(q2[0],q2[1],1),6)}:null})}
  if(typeof WONDERS!=='undefined')for(const w of WONDERS){if(!has(w.n))continue;R_.push({s:w.y0<=Y?1.5:3,n:w.n,k:'Wonder',w:fmtY(w.y0),go:()=>flyTo(v3(w.lat,w.lon,1),.8)})}
  for(const l of BIGL){if(!has(l[0]))continue;const now=Y>=l[3]&&Y<l[4];R_.push({s:now?1:3,n:l[0],k:'Region',w:now?'Exists now':'Not in this era',go:now?()=>{const p=Y<-5e6?paleoPos(l[1],l[2],Y):[l[1],l[2]];flyTo(v3(p[0],p[1],1),40)}:null})}
+ for(const e of oldSEFind(q))R_.push({s:2.6,n:`Total solar eclipse (${e[1]})`,k:'Coming',w:fmtY(e[0]),go:()=>{const p=paleoPos(e[2],e[3],Y);flyTo(v3(p[0],p[1],1),40)}});
  if(CITY){let c=0;for(let i=0;i<CITY.n&&c<6;i++){if(!CITY.name[i].toLowerCase().startsWith(q))continue;c++;R_.push({s:1.8,n:CITY.name[i],k:'Place',w:(CC[CITY.cc[i]]||{}).n||'',go:()=>{const p=paleoPos(CITY.lat[i],CITY.lon[i],Y);flyTo(v3(p[0],p[1],1),2.5)}})}}
  return R_.sort((a,b)=>a.s-b.s).slice(0,20)}
 function fmtMa2(m){return m>=1?(+m.toFixed(1))+' million years ago':Math.round(m*1000).toLocaleString('en-US')+' thousand years ago'}

@@ -36,7 +36,7 @@ function drawSun(){const S=ssnAt(simY),c=sunCv||(sunCv=document.createElement('c
  const n=Math.round(S/20),rs=hsh(Math.floor(simY*4)||1);x.fillStyle='rgba(70,35,10,.85)';for(let i=0;i<n;i++){const la=(hsh(rs*99+i)*30+5)*(hsh(rs*7+i)<.5?-1:1),lo=hsh(rs*31+i)*160-80,px=m+rd*Math.sin(lo*DEG)*Math.cos(la*DEG),py=m-rd*Math.sin(la*DEG),sz=.8+hsh(i*3+rs)*1.6;x.beginPath();x.ellipse(px,py,sz*Math.cos(lo*DEG)+.4,sz,0,0,7);x.fill()}
  if(FLR){const k=Math.sin(Math.PI*clamp(FLR.t/(FLR.big?8:3),0,1)),fx=m+rd*.35,fy=m-rd*.3;g=x.createRadialGradient(fx,fy,0,fx,fy,rd*(FLR.big?.9:.4));g.addColorStop(0,`rgba(255,255,255,${k})`);g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,256,256)}
  if(!sunTx){sunTx=new THREE.CanvasTexture(c);if(sunSpr){sunSpr.material.map=sunTx;sunSpr.material.color.setHex(0xffffff);sunSpr.material.needsUpdate=true}}else sunTx.needsUpdate=true}
-function updSkyX(dt){if(!sunSpr)return;sunT-=dt;
+function updSkyX(dt){try{updOldSE(dt)}catch(e){}if(!sunSpr)return;sunT-=dt;
  // ordinary flares: a few a minute at solar maximum, almost none at minimum (only a picture of the rate; the sim's clock is too fast to show real ones)
  flT-=dt;if(!FLR&&flT<=0){flT=4+rnd()*10;if(rnd()<ssnAt(simY)/200)FLR={t:0,dur:3}}
  if(FLR){FLR.t+=dt;sunT=0;if(FLR.t>FLR.dur)FLR=null}if(sunT<=0){sunT=FLR?.08:6;drawSun()}
