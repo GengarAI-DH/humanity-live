@@ -2,6 +2,18 @@
 
 Systems upgraded so far, so the next run picks something different. Already done before this log started: grazing and browsing, herds, predator territories, sleeping animals, predators eating catches, sea predators hunting, herbivores standing their ground, rival predators fighting, species interaction rules.
 
+## Nov 28 2026 (BEHAVIOR run): trains run real timetables by era
+- Run type: behavior. Handoff check: home ranges, tar pits and the migration popup throttle are already in main; play-as swimmers/fliers is a larger job left for its own run.
+- What changed (trainKmh, trainLeg, trainNight in 34-transport.js; RAILP now keeps its two cities; tap card in 46-camera.js): trains no longer shuttle back and forth at one fixed speed. Each trip runs at the era's real average speed on the same clock as ships (SHK seconds per real hour), eases out of and into stations, turns round at the platform, and high-speed trains wait out the night closure (midnight-6 AM local time at the station) before leaving. Trains can now be tapped.
+- Tap card: "Steam train · steaming at about 49 km/h on average, London to Manchester, 1.5 of about 3 h", "at the platform in Tokyo, turning round for the trip back", "stabled overnight at Osaka: no high-speed trains run from about midnight to 6 AM, the hours kept for track maintenance".
+- Numbers and sources (speeds are great-circle distance over timetable time, because the drawn line runs city to city):
+  - 1876 Transcontinental Express, New York-San Francisco in 83 h 39 min (Wikipedia "Transcontinental Express", citing the New York Times); 4,129 km great-circle = 49 km/h. Used for all trains before 1900.
+  - Tokyo-Osaka (402 km great-circle): 6.5 h by the best express before the Shinkansen = 62 km/h (conventional trains from 1958); Shinkansen 4 h in 1964 = 100, 3 h 10 min in 1965 = 127, Nozomi 2 h 30 min in 1992 = 161, 2 h 21 min today = 171 km/h. nippon.com Japan Data "The Shinkansen: From Dream to Essential Daily Service" https://www.nippon.com/en/japan-data/h02151/ ; first line ran at about 210 km/h (ASME landmark #211).
+  - No trains on the Tokaido Shinkansen from about midnight to 6 AM for overnight maintenance and noise rules (SoraNews24, 24 Jun 2026, on the first overnight trial train, which has to wait at Gifu-Hashima through those hours).
+  - TGV Paris-Lyon opened 27 Sep 1981 at 260 km/h top speed (UIC high-speed rail history); the Shinkansen average curve is used for all high-speed lines.
+- Simplifications (placements): 1900-1958 speeds ramp linearly from 49 to 62 km/h; 15-minute platform turnaround; the night closure applies to all high-speed lines; conventional trains (incl. night trains) keep running at night; easing near stations reuses the ship ramp.
+- Ideas next: intermediate stops at cities along a line, commuter peaks, freight trains, milking times, transhumance, seasonal migration legs for wild herds.
+
 ## Nov 28 2026 (ECOSYSTEM run): 366 new interaction rules and a grooms kind
 - Run type: ecosystem. Details in ECOLOG.md. Handoff: migration popup throttle, tar pits and home ranges already in main; nothing else open for behavior/ecosystem that fits the slot. Next run: BEHAVIOR.
 

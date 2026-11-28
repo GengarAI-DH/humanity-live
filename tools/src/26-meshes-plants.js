@@ -99,7 +99,7 @@ function nightCols(){const f=fireP.geometry.attributes.color,l=lightP.geometry.a
 function rebuildRails(){RAILP=[];const pts=[],c6=S.filter(s=>s.built&&s.tier>=6);
  for(let i=0;i<c6.length;i++)for(let j=i+1;j<c6.length;j++){const a=c6[i],b=c6[j],ang=a.U.angleTo(b.U)/DEG;if(ang>26)continue;let ok=true;const seg=24,P=[];
   for(let k=0;k<=seg;k++){const v=a.U.clone().lerp(b.U,k/seg).normalize(),h=hDir(v.x,v.y,v.z);if(h<0){ok=false;break}P.push(v.multiplyScalar(R+h+.004))}
-  if(!ok)continue;RAILP.push({p:P,hs:(['jp'].includes(a.c)&&simY>1964)||(a.c==='cn'&&simY>2008)||(['eu','eun'].includes(a.c)&&simY>1981)});for(let k=0;k<seg;k++)pts.push(P[k].x,P[k].y,P[k].z,P[k+1].x,P[k+1].y,P[k+1].z)}
- TRAINS=RAILP.map(r=>({p:r.p,hs:r.hs,t:rnd(),d:1,dur:(r.hs?40:90)*(r.p[0].distanceTo(r.p[r.p.length-1])+1),name:r.hs?'High-speed train':simY<1950?'Steam train':simY>2030?'Electric train':'Diesel train'}));
+  if(!ok)continue;RAILP.push({p:P,a,b,hs:(['jp'].includes(a.c)&&simY>1964)||(a.c==='cn'&&simY>2008)||(['eu','eun'].includes(a.c)&&simY>1981)});for(let k=0;k<seg;k++)pts.push(P[k].x,P[k].y,P[k].z,P[k+1].x,P[k+1].y,P[k+1].z)}
+ TRAINS=RAILP.map(r=>{const tr={p:r.p,a:r.a,b:r.b,hs:r.hs,t:rnd(),d:rnd()<.5?1:-1,park:0};trainLeg(tr);return tr});
  railL.geometry.dispose();railL.geometry=new THREE.BufferGeometry();railL.geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pts),3));railL.material.color.setHex(simY>1950?0x5a5e63:0x6b4b2e)}
 

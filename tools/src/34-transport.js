@@ -18,6 +18,16 @@ function shipKn(Y,sail){return sail?(Y<1818?4:5):Y<1950?9:Y<1968?lerp(9,22.5,(Y-
 function shipPortH(Y,sail){return sail?288:Math.max(22,lerp(288,22,clamp((Y-1850)/150,0,1)))}
 function shipName(s,Y){return s.sail?'Sailing ship':Y<1950?'Steamship':Y<2008?'Cargo ship':'Container ship'}
 function shipLeg(s){const A1=s.dir>0?s.a:s.b,B1=s.dir>0?s.b:s.a;s.sail=rnd()>=shipSteamP(simY);s.kn=shipKn(simY,s.sail)*(.85+rnd()*.3);const hrs=A1.U.angleTo(B1.U)*6371/(s.kn*1.852);s.dur=Math.max(30,hrs*SHK);s.days=hrs/24;s.ak=''}
+// Trains by era: average speed over the trip, measured as straight-line (great-circle) distance over the timetable time, since
+// the drawn line runs city to city. 1876 Transcontinental Express New York-San Francisco 83 h 39 min (Wikipedia, citing NYT)
+// over 4,129 km great-circle = 49 km/h. Tokyo-Osaka (402 km great-circle): 6.5 h by the best express before 1964 = 62 km/h;
+// Shinkansen 4 h in 1964 = 100, 3 h 10 min in 1965 = 127, Nozomi 2 h 30 min in 1992 = 161, 2 h 21 min today = 171 (nippon.com
+// Japan Data h02151). The Tokaido line runs no trains from about midnight to 6 AM (overnight maintenance and noise rules,
+// SoraNews24 2026 on the first overnight trial). Platform turnaround (SHK*.25, 15 min) and the 1900-1958 ramp are placements.
+function trainKmh(Y,hs){return hs?(Y<1965?100:Y<1992?127:Y<2015?161:171):Y<1900?49:Y<1958?lerp(49,62,(Y-1900)/58):62}
+function trainName(tr){return tr.hs?'High-speed train':simY<1950?'Steam train':simY>2030?'Electric train':'Diesel train'}
+function trainLeg(tr){tr.kmh=Math.round(trainKmh(simY,tr.hs));tr.km=tr.p[0].angleTo(tr.p[tr.p.length-1])*6371;tr.hrs=tr.km/tr.kmh;tr.dur=Math.max(6,tr.hrs*SHK);tr.name=trainName(tr);tr.ak=''}
+function trainNight(s,uh){return !!s&&nightCurfew(s,uh)&&(((uh+s.lon/15)%24+24)%24)<6}
 function nightCurfew(s,uh){if(s.lon===undefined)s.lon=ll(s.U.x,s.U.y,s.U.z)[1];const h=((uh+s.lon/15)%24+24)%24;return h>=23||h<6}
 const _pu=new THREE.Vector3(),_pu2=new THREE.Vector3();let _tbig=[],_tbT=0,_shT=0;
 function updTransport(dt){
@@ -60,7 +70,13 @@ function updTransport(dt){
  shipM.count=n;shipM.instanceMatrix.needsUpdate=true;shipM.instanceColor.needsUpdate=true;
  // trains
  const ta=trainM.instanceMatrix.array;let nt=0;
- if(simY>1830)for(const tr of TRAINS){tr.t+=dt/tr.dur*tr.d;if(tr.t>1||tr.t<0){tr.d*=-1;tr.t=clamp(tr.t,0,1)}const P_=tr.p,f=tr.t*(P_.length-1),k=Math.min(P_.length-2,Math.floor(f)),fr=f-k,a=P_[k],b=P_[k+1];
+ if(simY>1830)for(const tr of TRAINS){if(tr.kmh===undefined)trainLeg(tr);
+  // run the timetable: ease out of and into stations, turn round at the platform, and high-speed trains wait out the night closure
+  if(tr.park>0){tr.park-=dt;if(tr.park<=0){const st=tr.d>0?tr.a:tr.b;if(tr.hs&&trainNight(st,uh)){tr.park=SHK*.5;tr.night=1}else{tr.night=0;trainLeg(tr)}}}
+  else{const e0=Math.min(tr.t,1-tr.t);tr.t+=dt/tr.dur*tr.d*(.35+.65*Math.min(1,e0/.03));if(tr.t>1||tr.t<0){tr.t=clamp(tr.t,0,1);tr.d*=-1;tr.park=SHK*.25}}
+  {const A1=tr.d>0?tr.a:tr.b,B1=tr.d>0?tr.b:tr.a,tt=tr.d>0?tr.t:1-tr.t,k=tr.park>0?(tr.night?'n':'p')+(A1&&A1.i||0):Math.floor(tt*tr.hrs*2)+'|'+tr.d;
+   if(tr.ak!==k&&A1&&B1){tr.ak=k;const hh=tr.hrs<2?tr.hrs.toFixed(1):Math.round(tr.hrs);tr.act=tr.park>0?(tr.night?`stabled overnight at ${nameAt(A1,simY)}: no high-speed trains run from about midnight to 6 AM, the hours kept for track maintenance`:`at the platform in ${nameAt(A1,simY)}, turning round for the trip back`):`${simY<1950&&!tr.hs?'steaming':'running'} at about ${tr.kmh} km/h on average, ${nameAt(A1,simY)} to ${nameAt(B1,simY)}, ${(tt*tr.hrs).toFixed(1)} of about ${hh} h`}}
+  const P_=tr.p,f=tr.t*(P_.length-1),k=Math.min(P_.length-2,Math.floor(f)),fr=f-k,a=P_[k],b=P_[k+1];
   const px=a.x+(b.x-a.x)*fr,py=a.y+(b.y-a.y)*fr,pz=a.z+(b.z-a.z)*fr,l=Math.hypot(px,py,pz),ux=px/l,uy=py/l,uz=pz/l;let fx=(b.x-a.x)*tr.d,fy=(b.y-a.y)*tr.d,fz=(b.z-a.z)*tr.d;const dp=fx*ux+fy*uy+fz*uz;fx-=ux*dp;fy-=uy*dp;fz-=uz*dp;const fl=Math.hypot(fx,fy,fz)||1;
   tr.wx=px;tr.wy=py;tr.wz=pz;setInst(ta,nt*16,px,py,pz,ux,uy,uz,fx/fl,fy/fl,fz/fl,1.2);_c.setHex(tr.hs?0xf2f2f2:simY<1950?0x222222:0x8a2a2a);trainM.instanceColor.setXYZ(nt,_c.r,_c.g,_c.b);nt++;if(nt>=trainM.instanceMatrix.count)break}
  trainM.count=nt;trainM.instanceMatrix.needsUpdate=trainM.instanceColor.needsUpdate=true;

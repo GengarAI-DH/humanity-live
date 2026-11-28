@@ -1,6 +1,10 @@
 [
  {
   "when": "Nov 28",
+  "text": "Trains keep real timetables: each trip runs at its era's average speed (about 49 km/h in the steam age, 62 km/h before high-speed lines, 100 to 171 km/h on the Shinkansen from 1964 to today), slows into stations and turns round at the platform, and high-speed trains stay in the depot from about midnight to 6 AM. Tap a train to see where it is going and how far along it is."
+ },
+ {
+  "when": "Nov 28",
   "text": "Real clouds: the cloud layer now follows the real average cloud cover for each place and month (NOAA weather records 1991-2020). The equator's cloud band moves with the seasons, the Sahara, Arabia and Australia stay clear, the monsoon clouds India in summer and the Southern Ocean is stormy. Clouds stay with their places instead of spinning around the planet, and look like real photos from space."
  },
  {
@@ -154,9 +158,5 @@
  {
   "when": "Nov 27",
   "text": "69 famous shipwrecks, from the Bronze Age Uluburun trader and the Antikythera wreck to the Mary Rose, Vasa, Titanic, Lusitania, Endurance and Estonia, now lie at their real sites. Each sinks on its real date (great losses of life are remembered quietly), shows as a dot on the sea when you zoom in, and a sonar ring marks the day a lost wreck was found or raised. Tap a dot for what happened, lives lost, depth and sources."
- },
- {
-  "when": "Nov 27",
-  "text": "Dinosaur-era map: no Hudson Bay, Great Lakes or Baltic before the ice ages carved them, no Red Sea before it opened, and the Western Interior Seaway now runs from the Gulf of Mexico to Canada at its real width."
  }
 ]
