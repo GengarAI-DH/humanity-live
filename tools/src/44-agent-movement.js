@@ -43,7 +43,7 @@ function updAgents(dt,T){const ba=bodyM.instanceMatrix.array,ha=headM.instanceMa
 let boatN=0;
 function updAnimals(dt,T){GU.uT.value=T%1000;const aa=aniM.instanceMatrix.array,ca=carM.instanceMatrix.array;let na=0,nc=0;
  for(const a of ANIMS){const s=S[a.s];if(!s.built)continue;
-  if(a.w>0)a.w-=dt;else{const dx=a.tx-a.x,dz=a.tz-a.z,d=Math.hypot(dx,dz);if(d<.003)pickAT(a,s);else{const sp=a.dom===2?(a.type==='cart'?.02:a.type==='bike'?.035:.07):.012,st=Math.min(d,sp*dt);a.x+=dx/d*st;a.z+=dz/d*st;a.y+=(a.ty-a.y)*Math.min(1,st/d);a.h=Math.atan2(dx,dz)}}
+  if(a.w>0)a.w-=dt;else{const dx=a.tx-a.x,dz=a.tz-a.z,d=Math.hypot(dx,dz);if(d<.003)pickAT(a,s);else{const sp=(a.dom===2?(a.type==='cart'?.02:a.type==='bike'?.035:.07):.012)*(a.spf||1),st=Math.min(d,sp*dt);a.x+=dx/d*st;a.z+=dz/d*st;a.y+=(a.ty-a.y)*Math.min(1,st/d);a.h=Math.atan2(dx,dz)}}
   const sh=Math.sin(a.h),ch=Math.cos(a.h),o=s.o,e=s.e,u=s.u,so=s.so;
   const px=o[0]+e[0]*a.x+so[0]*a.z+u[0]*a.y,py=o[1]+e[1]*a.x+so[1]*a.z+u[1]*a.y,pz=o[2]+e[2]*a.x+so[2]*a.z+u[2]*a.y;
   a.wx=px;a.wy=py;a.wz=pz;

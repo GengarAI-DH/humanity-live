@@ -1308,8 +1308,24 @@ function herdFor(s,Y,t){const c=s.c,w=[],d=[];
 let ANIMS=[];
 function rebuildAnimals(){ANIMS=[];for(const s of S){if(!s.built||s.tier<0)continue;const h=herdFor(s,simY,s.tier);s.hkey=h.map(x=>x[0]).join();for(const[type,dom]of h){const a={s:s.i,type,dom,x:0,z:0,y:0,tx:0,tz:0,ty:0,w:rnd()*5,h:rnd()*6.28,c:type==='car'||type==='pod'?pick([0xc0392b,0x2c3e50,0xecf0f1,0x7f8c8d,0x2980b9,0xf1c40f,0x16a085,0x111111]):type==='bus'?pick([0xe0a526,0xc0392b,0x2a6f97]):ANI[type][0]};pickAT(a,s);a.x=a.tx;a.z=a.tz;a.y=a.ty;ANIMS.push(a)}}
  let ia=0,ic=0;for(const a of ANIMS){if(VEH.has(a.type)){_c.setHex(a.c);carM.instanceColor.setXYZ(ic++,_c.r,_c.g,_c.b)}else if(a.type!=='robot'){_c.setHex(a.c);aniM.instanceColor.setXYZ(ia++,_c.r,_c.g,_c.b)}}aniM.instanceColor.needsUpdate=carM.instanceColor.needsUpdate=true}
-function pickAT(a,s){const Rd=s.rad;let r,an=rnd()*6.28;if(a.dom>=2){const w=s.work.length?pick(s.work):[0,0];a.tx=w[0]+(rnd()-.5)*.05;a.tz=w[1]+(rnd()-.5)*.05}else{r=a.dom?Rd*(1.05+rnd()*.7):Rd*(1.8+rnd()*2.2);a.tx=Math.cos(an)*r;a.tz=Math.sin(an)*r}
- if(gH(s,a.tx,a.tz)<0){a.tx*=.5;a.tz*=.5}a.ty=gY(s,a.tx,a.tz)||0;a.w=a.dom===2?rnd()*2:3+rnd()*12}
+// Livestock day by local solar time: penned at night, out at first light, big grazing bouts early morning and late afternoon (the later one longest), rest and rumination at midday and at night (Gregorini 2012 Anim. Prod. Sci. 52:416; Kilgour 2012 Appl. Anim. Behav. Sci.); night pens/bomas against predators (Ogada et al. 2003 Conserv. Biol. 17:1521).
+// Cars: rush hours from the hourly share of US road congestion (TTI 2012 Urban Mobility Report via BTS TSAR 2013 fig 5-3: 7-9 AM 14.7%, 3-6 PM 33.8%, midnight-5 AM 1.0%).
+const LSTK=new Set(['sheep','goat','cattle','camel','pig','horse','buffalo','yak','llama','alpaca','reindeer','donkey']),POUL=new Set(['chicken','turkey','duck']);
+function locHr(s){return((Date.now()/36e5+(s.lon||0)/15)%24+24)%24}
+function stockAT(a,s){const Rd=s.rad,h=locHr(s),dy=s.day===undefined?.5:s.day,P=POUL.has(a.type);if(a.hi===undefined)a.hi=(rnd()*1e6)|0;if(s.pa===undefined)s.pa=rnd()*6.28;
+ const home=s.homes.length?s.homes[a.hi%s.homes.length]:[0,0],pen=()=>{a.tx=home[0]+(rnd()-.5)*.025;a.tz=home[1]+.035+(rnd()-.5)*.015;a.ph='h'},
+  out=()=>{const g=s.pa+(a.hi%7-3)*.16+(rnd()-.5)*.3,rr=Rd*(P?.35+rnd()*.4:1.1+rnd()*.6);a.tx=Math.cos(g)*rr;a.tz=Math.sin(g)*rr;a.ph='p'},
+  graze=()=>{a.tx=a.x+(rnd()-.5)*.03;a.tz=a.z+(rnd()-.5)*.03;const r=Math.hypot(a.tx,a.tz),mx=Rd*(P?1:2);if(r>mx){a.tx*=mx/r;a.tz*=mx/r}};
+ if(dy<-.06){if(a.ph!=='h')pen();else{a.tx=a.x;a.tz=a.z}a.act=P?'roosting for the night':'in the night pen, mostly lying down chewing the cud';return 20+rnd()*20}
+ if(h<11){if(a.ph!=='p'){out();a.act=P?'let out at first light to scratch for food':'driven out to pasture at first light';return 1}graze();a.act=P?'scratching and pecking for food':'grazing: the big early-morning bout';return 2+rnd()*5}
+ if(h<14.5){a.tx=a.x;a.tz=a.z;a.act=P?'resting in the shade':'resting through the middle of the day, chewing the cud';return 15+rnd()*15}
+ if(dy>=.1){if(a.ph!=='p'){out();a.act='heading back out to graze';return 1}graze();a.act=P?'scratching and pecking for food':'grazing: the longest bout of the day, before dusk';return 2+rnd()*5}
+ if(a.ph!=='h'){pen();a.act=P?'heading back to roost at dusk':'driven home to the pen before dark';return 1}a.tx=a.x;a.tz=a.z;a.act=P?'roosting for the night':'settling down in the pen for the night';return 15+rnd()*10}
+function pickAT(a,s){const Rd=s.rad;let r,an=rnd()*6.28,wt=-1;a.spf=1;if(a.dom>=2){const w=s.work.length?pick(s.work):[0,0];a.tx=w[0]+(rnd()-.5)*.05;a.tz=w[1]+(rnd()-.5)*.05;
+  if(simY>1920&&(a.type==='car'||a.type==='bus')){const h=locHr(s);if(h<5&&a.type==='car'&&rnd()<.8){a.tx=a.x;a.tz=a.z;a.act='parked for the night';wt=30+rnd()*60}else if((h>=7&&h<9)||(h>=15&&h<18)){a.spf=.4;a.act=h<12?'stuck in the morning rush hour':'crawling home in the evening rush hour'}else a.act=h>=20||h<5?'driving at night on quiet roads':'driving across town'}}
+ else if(a.dom===1&&(LSTK.has(a.type)||POUL.has(a.type)))wt=stockAT(a,s);
+ else{r=a.dom?Rd*(1.05+rnd()*.7):Rd*(1.8+rnd()*2.2);a.tx=Math.cos(an)*r;a.tz=Math.sin(an)*r}
+ if(gH(s,a.tx,a.tz)<0){a.tx*=.5;a.tz*=.5}a.ty=gY(s,a.tx,a.tz)||0;a.w=wt>=0?wt:a.dom===2?rnd()*2:3+rnd()*12}
 
 // ---- species registry for deep time ----
 // key:[name,mesh,color,scale,fromMya,toMya,plates,predator,habitat,yScale,fact]
@@ -2086,7 +2102,7 @@ function updAgents(dt,T){const ba=bodyM.instanceMatrix.array,ha=headM.instanceMa
 let boatN=0;
 function updAnimals(dt,T){GU.uT.value=T%1000;const aa=aniM.instanceMatrix.array,ca=carM.instanceMatrix.array;let na=0,nc=0;
  for(const a of ANIMS){const s=S[a.s];if(!s.built)continue;
-  if(a.w>0)a.w-=dt;else{const dx=a.tx-a.x,dz=a.tz-a.z,d=Math.hypot(dx,dz);if(d<.003)pickAT(a,s);else{const sp=a.dom===2?(a.type==='cart'?.02:a.type==='bike'?.035:.07):.012,st=Math.min(d,sp*dt);a.x+=dx/d*st;a.z+=dz/d*st;a.y+=(a.ty-a.y)*Math.min(1,st/d);a.h=Math.atan2(dx,dz)}}
+  if(a.w>0)a.w-=dt;else{const dx=a.tx-a.x,dz=a.tz-a.z,d=Math.hypot(dx,dz);if(d<.003)pickAT(a,s);else{const sp=(a.dom===2?(a.type==='cart'?.02:a.type==='bike'?.035:.07):.012)*(a.spf||1),st=Math.min(d,sp*dt);a.x+=dx/d*st;a.z+=dz/d*st;a.y+=(a.ty-a.y)*Math.min(1,st/d);a.h=Math.atan2(dx,dz)}}
   const sh=Math.sin(a.h),ch=Math.cos(a.h),o=s.o,e=s.e,u=s.u,so=s.so;
   const px=o[0]+e[0]*a.x+so[0]*a.z+u[0]*a.y,py=o[1]+e[1]*a.x+so[1]*a.z+u[1]*a.y,pz=o[2]+e[2]*a.x+so[2]*a.z+u[2]*a.y;
   a.wx=px;a.wy=py;a.wz=pz;
