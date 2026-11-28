@@ -1,6 +1,10 @@
 [
  {
   "when": "Nov 27",
+  "text": "Fact check: city populations in the past no longer shrink Europe, North America and Japan too hard (Madrid 1969 now about 2.6M, not 0.9M); Orellana's Amazon journey starts in December 1541"
+ },
+ {
+  "when": "Nov 27",
   "text": "Night looks like night: trees, animals and buildings on the dark side of the planet no longer catch sunlight through the Earth, and fade into moonlit silhouettes at dusk. Event alerts now appear below the date panel instead of on top of it"
  },
  {
@@ -154,9 +158,5 @@
  {
   "when": "Nov 27",
   "text": "78 real historic earthquakes now strike in their real years with measured magnitudes and death tolls, from Messina 1908 to Sulawesi 2018, plus 38 more real volcanic eruptions from Kikai and Cerro Blanco to Novarupta and Hunga Tonga"
- },
- {
-  "when": "Nov 27",
-  "text": "Real recorded weather: from 1940 on, the weather panel shows the actual recorded weather for that day and place, and live weather once the sim reaches today"
  }
 ]

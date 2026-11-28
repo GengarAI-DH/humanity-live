@@ -19,4 +19,3 @@ How to use it:
 - 2026-11-27: The Chicxulub milestone card uses its whole sentence as its Wikipedia title. Give milestone and event cards a proper Wikipedia title. (data checker)
 
 ## graphics, map, art, behavior, ecosystem, realism
-- realism, 2026-11-27: city label populations look low for 1969 (Madrid 888k, Toronto 762k, Barcelona 460k; real metros were about 3M, 2.6M, 1.7M). cityPop() in tools/tpl.html scales today's population by (world population ratio)^1.6, which undercounts cities that grew slowly after 1970. Seen in graphics screenshots at 1969, 48N 5E, alt 60.
