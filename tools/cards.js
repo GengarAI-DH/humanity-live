@@ -125,7 +125,7 @@ for (const c of cards) {
     if (s && s[13] && s[13].length) {
       const good = s[13].filter(t => goodSite(t[2]));
       // a wrong option must be at least 1,500 km from every place this animal is known from, so it can't secretly be right
-      if (good.length) add2(mcq(r, 'Where have ' + nm + ' fossils been found?', good[Math.floor(r() * good.length)][2], allSites.filter(([o, t]) => o !== s[0] && s[13].every(m => km(m, t) > 1500)).sort(() => r() - .5).map(x => x[1][2])));
+      if (good.length) add2(mcq(r, 'Where have ' + nm + ' fossils been found?', good[Math.floor(r() * good.length)][2], allSites.filter(([o, t]) => o !== s[0] && [...s[13], ...(((spj.fix || {})[s[0]] || [])[2] || [])].every(m => km(m, t) > 1500)).sort(() => r() - .5).map(x => x[1][2])));
     }
   } else if (c[2] === 'pl') {
     const p = PLD[slug(nm)];

@@ -1,5 +1,9 @@
 [
 {
+"when": "Nov 28",
+"text": "Prehistoric animals now live where their fossils were really found: 1,921 dated fossil sites from the Paleobiology Database for 527 extinct animals, from the last dinosaurs to Ice Age sabre-tooth cats."
+},
+{
 "when": "Nov 27",
 "text": "Herds and predators now spread across the land instead of crowding into one spot. Each herd has its own home range and walks a daily route on real local time: out to feed at first light, to water, a slow midday, an afternoon feeding ground, then a place to rest for the night. Predators patrol their ranges and Ice Age and modern predators rest by day. Distances come from GPS-collar studies of elephants and lions. Tapping an animal shows where it is on its route, and how far it has walked today. Cars no longer show a diet, people show as omnivores, and double-tapping the play buttons no longer zooms the page."
 },
@@ -154,9 +158,5 @@
 {
 "when": "Nov 27",
 "text": "Card leaderboards (Top tab): top collectors this season and all time, the luckiest low serial numbers, and who found each card first. Share any view with 🔗 in the Now panel: the link opens right at that spot. On computers, menus now open as a side panel. Added a privacy policy and terms of use, and the world and everyone's cards are now backed up every night."
-},
-{
-"when": "Nov 27",
-"text": "Cities now rise in their real founding years: about 5,800 cities carry their founding date or first written record from Wikidata, so Brasília appears in 1960, Saint Petersburg in 1703, Johannesburg in 1886, Chicago in 1837 and Berlin in the 1200s instead of everything being there from the start. Young cities show when they were founded on their label, and 440 big cities get a founding moment in Happening now."
 }
 ]
