@@ -2,6 +2,19 @@
 
 Newest first. Runs rotate A → B → C: A = dataset import, B = species run, C = history and inventions run. (Older entries below used the earlier labels: their "Run A" is today's B, their "Run B" is today's C.)
 
+## 2026-11-28 · Run B (species: Cenozoic Australia, South America, Africa, Asia and seas)
+- Added 79 extinct animals (species.json now 1,068 in "sp", 816 with dated sites in "fix"), each with Paleobiology Database occurrences (4,375 occurrences downloaded; up to 40 half-degree sites per animal with their own age ranges). Picked from PBDB genus lists (occs/taxa, extinct tetrapods since 71.5 Ma) for Australia+Antarctica, South America, Africa and Asia, most-recorded genera first, skipping ones already in the world.
+  - Australia (19): Simosthenurus, Metasthenurus, Troposodon, Ganguroo, Propleopus, Euowenia, Nimiokoala, Ektopodon, Malleodectes, Megalibgwilia, giant megapodes Latagallina and Progura, crocodiles Paludirex (5 m, Ristevski et al. 2020), Mekosuchus (to about 3,000 years ago on Vanuatu, Mead et al. 2002), Australosuchus, Kambara, snakes Nanowana and Yurlunggur, Mammalodon.
+  - Antarctica / Maastrichtian: Aristonectes, Polarornis, Homalocephale (Nemegt, Mongolia).
+  - South America (20): Notiomastodon, Protypotherium, Paedotherium, Panochthus, Neosclerocalyptus, Cladosictis, Borhyaena, Scelidotherium, Catonyx, Hapalops, Palaeolama, Pampatherium, Propraopus, Eutatus, Macroeuphractus, Peltephilus, Protocyon, Nesodon, Granastrapotherium, Psilopterus.
+  - Africa (24): Kolpochoerus, Metridiochoerus, Nyanzachoerus, Notochoerus, Gerontochoerus, Eurygnathohippus, Pelorovis, Menelikia, Rhinocolobus, Cercopithecoides, Victoriapithecus, Euthecodon, Primelephas, Stegotetrabelodon, Prodeinotherium, Palaeomastodon, Sivaonyx, Enhydriodon, Apterodon, Chasmaporthetes, sea cows Eotheroides and Eosiren, Saghacetus, Homiphoca.
+  - Asia and wide-ranging (13): Cadurcodon, Anthracotherium, Eudinoceras, Gomphotherium, Zygolophodon, Stegolophodon, Listriodon, Palaeotragus, Ictitherium, Sinomegaceros, Amebelodon, Allodesmus, Metaxytherium.
+- Ranges: first appearance = second-oldest early bound among occurrences dated to under 6 million years; last appearance = third-youngest occurrence midpoint (second with fewer than 10), so one coarse "Pleistocene" record does not stretch an animal to the end of the Ice Age. Ends under 130,000 years are set to 11,700 years (end of the Pleistocene). Some animals may therefore end a little before their true last record.
+- No body lengths except Paludirex (others use per-mesh scale, like the p_ genera). Existing meshes only (quad, ankylo, thero, fish, whale, plesio, ptero). New animals ramp in rare and local through rampF.
+- Skipped: Dracaena (living genus), Libytherium (often treated as Sivatherium, already in), Paranthropus (hominins left to the people side), Sarcophilus and Hydrodamalis (already in the modern list), Morturneria and Pallimnarchus (no genus-level occurrences returned).
+- Viewer ideas: humanitylivewatch.com/api/ideas returned an empty list.
+- Next run: C (history and inventions).
+
 ## 2026-11-28 · Run A (dataset import: Paleobiology Database fossil sites)
 - Imported 1,921 dated fossil sites (Paleobiology Database occurrences, de-duplicated to half-degree cells, at most 40 per animal, each with its own age range) for 527 extinct land and flying animals that had at most a few undated sites. They go in species.json "fix" (now 745 animals), so each animal appears only near the places its fossils are from at that time, and its regions follow its fossil plates.
   - 470 Maastrichtian animals from the Maastrichtian vertebrate download (7,746 occurrences); 57 Cenozoic animals (Smilodon populator, Mammuthus exilis, Theropithecus, Dinofelis, Meiolania, Paleogene penguins, Antarctic and Indian Eocene mammals...) from a second download (1,530 occurrences). About 424 of the Maastrichtian sites are places not listed before.
