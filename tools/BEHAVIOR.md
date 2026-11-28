@@ -2,6 +2,9 @@
 
 Systems upgraded so far, so the next run picks something different. Already done before this log started: grazing and browsing, herds, predator territories, sleeping animals, predators eating catches, sea predators hunting, herbivores standing their ground, rival predators fighting, species interaction rules.
 
+## Nov 27 2026 (ECOSYSTEM run): 394 new interaction rules
+- Run type: ecosystem (rules only, no engine change). Details in ECOLOG.md. Next run: BEHAVIOR (handoff top items: herd home ranges with daily routes; tar pits).
+
 ## Nov 27 2026: ocean ships sail at their era's speeds and wait in port
 - What changed: ships on the ocean routes no longer all cross in the same 220 s. Each leg is timed from its real distance and the ship's speed, they slow near harbours, and on arrival they sit in port before sailing back. Each departure picks sail or steam by the year (no steam before 1840, about a quarter by 1870, half by 1880, 80% by 1910, all by 1930), so in the late 1800s brown sailing ships and dark steamers share the same route at different speeds. Sail stays about 12 days in port (shown compressed); port stays shrink toward about a day for modern container ships.
 - Ships are now tappable (before, nothing happened) and labelled with what they are doing: "under sail at about 5 knots, London to New York, day 9 of about 27", "steaming at about 9 knots ...", "slow steaming to save fuel at about 18 knots ...", "in port at Lagos, loading and unloading (about 12 days)". Labels: Sailing ship, Steamship, Cargo ship (1950-2007), Container ship (2008 on).
