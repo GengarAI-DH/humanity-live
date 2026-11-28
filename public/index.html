@@ -831,7 +831,7 @@ function treeName(type,b,lat,lon,Y){const r=hash(Math.round(lat*40),Math.round(l
  if(Y<-2.6e6&&PLDB.length){const t=type==='tuft'?'fern':type==='palm'?'palm':type==='con'?'con':'broad';const nm=plantPick(t,lat,lon,Y,r);if(nm)return nm}
  const NA=lon<-50&&lat>14,SA=lon<-30&&lat<=14,AF=lon>-20&&lon<52&&lat<35,AU=lon>110&&lat<-10,EA=lon>100&&lat>20,IN=lon>66&&lon<92&&lat>5&&lat<30,SEA=lon>92&&lat<20&&lat>-11,MED=lat>30&&lat<46&&lon>-10&&lon<42,ME=lat>12&&lat<38&&lon>34&&lon<62;
  if(Y<-66e6){if(type==='con')return P_(['Araucaria conifer','Ginkgo','Podocarp']);if(type==='tuft')return P_(['Ferns','Horsetails']);if(type==='flower')return Y>-125e6?'Early flowering plants':'Ferns';return Y<-125e6?P_(['Cycad','Tree fern','Bennettitalean']):P_(['Early magnolia','Cycad','Tree fern'])}
- if(Y<-3e6){if(type==='con')return P_(['Dawn redwood','Pine']);if(type==='tuft')return Y<-20e6?'Ferns & shrubs':'Early grasses';return P_(['Laurel tree','Oak','Palm'])}
+ if(Y<-3e6){if(type==='con')return P_(['Dawn redwood','Pine']);if(type==='tuft')return Y<-20e6?'Ferns & shrubs':'Early grasses';return P_(Y<-56e6?['Laurel tree','Palm']:['Laurel tree','Oak','Palm'])}
  if(type==='tuft'){if(b===7)return 'Elephant grass';if(b===5)return NA?'Prairie bluestem grass':AU?'Spinifex':'Feather grass';if(b===2)return 'Sedge & lichen';if(b===6)return AU?'Spinifex':'Desert grass';if(b===8)return 'Ferns & undergrowth';if(b===3)return 'Moss & blueberry';return 'Meadow grass'}
  if(type==='flower')return NA?'Prairie wildflowers':MED?'Poppies':AF?'Savanna flowers':AU?'Wattle blossom':EA?'Wild chrysanthemums':'Wildflowers';
  if(type==='snag')return NA&&lat<36?'Saguaro cactus':'Dead tree';
