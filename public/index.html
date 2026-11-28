@@ -1342,8 +1342,10 @@ const ROUTES=[['london','nyc'],['blombos','mumbai'],['lagos','saopaulo'],['tokyo
 function planeEra(Y){return Y<1933?{kmh:165,cm:3000}:Y<1946?{kmh:250,cm:3000}:Y<1958?{kmh:250,cm:7500}:{kmh:670,cm:10700}}
 function newFlight(a,b,pe,t){const ang=a.U.angleTo(b.U);return{a,b,t,ang,park:0,cm:pe.cm,dur:40+ang*60*670/pe.kmh,ga:Math.max(0,hDir(a.U.x,a.U.y,a.U.z)),gb:Math.max(0,hDir(b.U.x,b.U.y,b.U.z))}}
 function nightCurfew(s,uh){if(s.lon===undefined)s.lon=ll(s.U.x,s.U.y,s.U.z)[1];const h=((uh+s.lon/15)%24+24)%24;return h>=23||h<6}
+const _pu=new THREE.Vector3(),_pu2=new THREE.Vector3();let _tbig=[],_tbT=0,_shT=0;
 function updTransport(dt){
- const big=S.filter(s=>s.built&&s.tier>=6),want=simY<1919?0:Math.round(lerp(2,55,clamp((simY-1919)/95,0,1)));
+ _tbT-=dt;if(_tbT<=0){_tbT=.5;_tbig=S.filter(s=>s.built&&s.tier>=6)}
+ const big=_tbig,want=simY<1919?0:Math.round(lerp(2,55,clamp((simY-1919)/95,0,1)));
  const pe=planeEra(simY),uh=(Date.now()/36e5)%24;
  while(PLANES.length<want&&big.length>1){const a=pick(big);let b=pick(big);if(a===b)continue;PLANES.push(newFlight(a,b,pe,rnd()*.5))}
  if(PLANES.length>want)PLANES.length=want;
@@ -1353,17 +1355,18 @@ function updTransport(dt){
   if(p.park>0){p.park-=dt;p.wx=undefined;if(p.park<=0){const b=pick(big);if(b===p.a){p.park=1;continue}if(p.a.U.angleTo(b.U)*6371<4000&&nightCurfew(p.a,uh)){p.park=5;continue}Object.assign(p,newFlight(p.a,b,pe,0))}continue}
   p.t+=dt/p.dur;if(p.t>=1){p.a=p.b;p.park=6+rnd()*8;p.wx=undefined;continue}
   const Dk=p.ang*6371,x=p.t*Dk,dd=p.cm*.01823,c1=x<dd,d1=Dk-x<dd,fr=Math.min(1,x/dd,(Dk-x)/dd),h=fr*(2-fr),V=p.cm/10700*1.3;
-  const u=p.a.U.clone().lerp(p.b.U,p.t).normalize(),u2=p.a.U.clone().lerp(p.b.U,Math.min(1,p.t+.01)).normalize(),alt=R+p.ga+(p.gb-p.ga)*p.t+.04+V*h;
+  const u=_pu.copy(p.a.U).lerp(p.b.U,p.t).normalize(),u2=_pu2.copy(p.a.U).lerp(p.b.U,Math.min(1,p.t+.01)).normalize(),alt=R+p.ga+(p.gb-p.ga)*p.t+.04+V*h;
   const f=u2.sub(u);f.addScaledVector(u,-f.dot(u)).normalize();
   const sl=fr<1?(c1?1:-1)*Math.atan(V*(2-2*fr)/dd*6371/R)*.6:0,cs=Math.cos(sl),sn=Math.sin(sl),fx=f.x*cs+u.x*sn,fy=f.y*cs+u.y*sn,fz=f.z*cs+u.z*sn,ux=u.x*cs-f.x*sn,uy=u.y*cs-f.y*sn,uz=u.z*cs-f.z*sn;
-  p.act=fr<1&&c1&&d1?'short hop, climbing and descending':c1?'climbing out of '+nameAt(p.a,simY):d1?'descending into '+nameAt(p.b,simY):'cruising at about '+(Math.round(p.cm/100)*100).toLocaleString('en-US')+' m to '+nameAt(p.b,simY);
+  const ph=fr<1&&c1&&d1?0:c1?1:d1?2:3;if(p.ph!==ph||p.phA!==p.a||p.phB!==p.b){p.ph=ph;p.phA=p.a;p.phB=p.b;
+  p.act=fr<1&&c1&&d1?'short hop, climbing and descending':c1?'climbing out of '+nameAt(p.a,simY):d1?'descending into '+nameAt(p.b,simY):'cruising at about '+(Math.round(p.cm/100)*100).toLocaleString('en-US')+' m to '+nameAt(p.b,simY)}
   p.wx=u.x*alt;p.wy=u.y*alt;p.wz=u.z*alt;setInst(arr,n*16,p.wx,p.wy,p.wz,ux,uy,uz,fx,fy,fz,1.6);planeM.instanceColor.setXYZ(n,.95,.95,.97);n++}
  planeM.count=n;planeM.instanceMatrix.needsUpdate=true;planeM.instanceColor.needsUpdate=true;
  // ships
- if(simY>=1500){for(const r of ROUTES){const a=SK[r[0]],b=SK[r[1]];if(!a.built||!b.built||a.tier<5||b.tier<5)continue;const id=r.join();if(!SHIPS.some(s=>s.id===id))SHIPS.push({id,a,b,t:rnd(),dir:1})}}else SHIPS=[];
+ _shT-=dt;if(simY>=1500){if(_shT<=0){_shT=1;for(const r of ROUTES){const a=SK[r[0]],b=SK[r[1]];if(!a.built||!b.built||a.tier<5||b.tier<5)continue;const id=r.join();if(!SHIPS.some(s=>s.id===id))SHIPS.push({id,a,b,t:rnd(),dir:1})}}}else SHIPS=[];
  n=0;const sa=shipM.instanceMatrix.array;
  for(const s of SHIPS){if(!s.a.built||!s.b.built){continue}s.t+=dt/220*s.dir;if(s.t>1||s.t<0){s.dir*=-1;s.t=clamp(s.t,0,1)}const A1=s.dir>0?s.a:s.b,B1=s.dir>0?s.b:s.a,tt=s.dir>0?s.t:1-s.t;
-  const u=A1.U.clone().lerp(B1.U,tt).normalize(),u2=A1.U.clone().lerp(B1.U,Math.min(1,tt+.005)).normalize(),f=u2.sub(u);f.addScaledVector(u,-f.dot(u)).normalize();const r_=R+Math.max(0,hDir(u.x,u.y,u.z))+.005;
+  const u=_pu.copy(A1.U).lerp(B1.U,tt).normalize(),u2=_pu2.copy(A1.U).lerp(B1.U,Math.min(1,tt+.005)).normalize(),f=u2.sub(u);f.addScaledVector(u,-f.dot(u)).normalize();const r_=R+Math.max(0,hDir(u.x,u.y,u.z))+.005;
   s.wx=u.x*r_;s.wy=u.y*r_;s.wz=u.z*r_;setInst(sa,n*16,u.x*r_,u.y*r_,u.z*r_,u.x,u.y,u.z,f.x,f.y,f.z,1.4);_c.setHex(simY>1880?0x3a3f48:0x6b4a2e);shipM.instanceColor.setXYZ(n,_c.r,_c.g,_c.b);n++}
  LBOATS=[];const T=performance.now()/1000;
  for(const s of S){if(!s.built||s.cd===null||s.tier<0||!s.U||s.U.angleTo(cam.t)>.08)continue;const t=s.tier;
@@ -1701,7 +1704,7 @@ async function loadCities(){loadBorders();loadWater();loadQuakes();loadSpecies()
  const pos=new Float32Array(n*3),col=new Float32Array(n*3);
  L.forEach((x,i)=>{CITY.lat[i]=x[1];CITY.lon[i]=x[2];CITY.pop[i]=x[3];const ct=CC[x[4]]?CC[x[4]].ct:'';CITY.ct[i]=ct;CITY.gate[i]=cityGate(x[4],ct);if(typeof x[5]==='number'){CITY.fy[i]=x[5];CITY.fr[i]=x[6]?1:0;CITY.gate[i]=x[5]}const v=v3(x[1],x[2],1);CITY.U[i*3]=v.x;CITY.U[i*3+1]=v.y;CITY.U[i*3+2]=v.z;const r=R+Math.max(0,hAt(x[1],x[2]))+.03;pos[i*3]=v.x*r;pos[i*3+1]=v.y*r;pos[i*3+2]=v.z*r});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
- cityP=new THREE.Points(g,new THREE.PointsMaterial({map:DOTT(),alphaTest:.02,size:2.6,sizeAttenuation:false,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));cityP.frustumCulled=false;scene.add(cityP);
+ cityP=new THREE.Points(g,cityMat());cityP.frustumCulled=false;cityP.onBeforeRender=r=>{const u=cityP.material.uniforms;u.pr.value=r.getPixelRatio();u.al.value=clamp((cam.alt-2)/18,.15,1)};scene.add(cityP);
  for(let i=0;i<22;i++){const d=document.createElement('div');d.className='geo c';document.body.appendChild(d);CLBL.push(d)}
  for(const c of COUNTRIES){const d=document.createElement('div');d.className='geo k';document.body.appendChild(d);KLBL[c[0]]={d,v:v3(c[2],c[3],R+.4)}}
  updCities(true);try{loadFoundings(L)}catch(e){}}catch(e){console.warn('cities',e)}}
@@ -1716,6 +1719,10 @@ function fireFounding(e){const i=e[2],t=e[1],lat=CITY.lat[i],lon=CITY.lon[i],U=v
  if(CITY.pop[i]>=3e6)toast(`<b>🏙 ${esc(t)}</b><br><small>Today about ${fmtP(CITY.pop[i])} people live here · founding dates from Wikidata</small>`,5000);
  if(U.angleTo(cam.t)<.35&&cam.alt<30)slabel(U,'🏙 '+CITY.name[i],12)}
 function fdFacts(title,L){const f=FDW[title];if(!f)return;L.push(['City',CITY.name[f.i]]);L.push(['People living there today','about '+fmtP(CITY.pop[f.i])]);L.push([f.r?'First written record':'Founded',fmtY(f.y)]);L.push(['Source',f.r?'Wikidata (earliest written record)':'Wikidata (inception date)'])}
+// city lights: big cities glow wider at night, dark (unfounded or daylit small) towns cost nothing
+function cityMat(){return new THREE.ShaderMaterial({uniforms:{map:{value:DOTT()},sz:{value:LITE?2:2.6},pr:{value:1},al:{value:1}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+ vertexShader:'attribute vec3 color;uniform float sz,pr,al;varying vec3 vC;void main(){float k=max(color.r,max(color.g,color.b));vC=color;if(k<.006){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;return;}gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);gl_PointSize=sz*pr*(.75+al*4.5*k*k);}',
+ fragmentShader:'uniform sampler2D map;varying vec3 vC;void main(){float a=texture2D(map,gl_PointCoord).a;if(a<.02)discard;gl_FragColor=vec4(min(vC*1.5,1.)*a*a,1.);}'})}
 function updCities(force){if(!CITY)return;const col=cityP.geometry.attributes.color.array,n=CITY.n,Y=simY,sx=sunDir.x,sy=sunDir.y,sz=sunDir.z;
  for(let i=0;i<n;i++){const p=Y<-3500?0:cityPop(i,Y);if(!p){col[i*3]=col[i*3+1]=col[i*3+2]=0;continue}const d=CITY.U[i*3]*sx+CITY.U[i*3+1]*sy+CITY.U[i*3+2]*sz,night=clamp(-d*5+.15,0,1),b=clamp((Math.log10(p)-3.6)/3.4,.1,1)*(Y<1880?.45:1);
   const k=night*b+(1-night)*b*.12;col[i*3]=k;col[i*3+1]=k*(Y<1880?.62:.85);col[i*3+2]=k*(Y<1880?.3:.55)}
@@ -2456,7 +2463,7 @@ function cBig(cid){const c=CARDS.by[cid];if(!c)return;const s=cSeason(c[1]),n=(C
  $('cardBig').querySelector('.inner').innerHTML=`<div class="card r${c[4]} flip" style="--rc:${C_RC[c[4]]};--sc:${s[5]}"><div class="r" style="text-align:left">${s[4]} ${esc(s[1])} · ${C_K[c[2]]}</div><div class="e">${cEmo(c)}</div><div><div class="n">${esc(c[3])}</div><div class="r">${C_RN[c[4]]} · ${yr}</div><div class="f">${esc(c[6]||'')}</div><div class="f" style="opacity:.7;margin-top:6px">${how}</div></div></div>
  <div class="btns">${n?`<span class="sm">You have ${n} · serial ${CME.ser[cid].map(x=>'#'+x.toLocaleString('en-US')).join(', ')} of 71,250,000 · ${(CME.minted[cid]||n).toLocaleString('en-US')} found by everyone so far</span>`:'<span class="sm">Not collected yet</span>'}<a href="https://en.wikipedia.org/wiki/${encodeURIComponent(c[7])}" target="_blank" rel="noopener">Wikipedia ↗</a>${n&&CME.signedIn?`<button id="cbTrade">Offer in a trade</button>`:''}</div>`;
  $('cardBig').classList.add('on');const tb=$('cbTrade');if(tb)tb.onclick=()=>{$('cardBig').classList.remove('on');cTab='trade';cDraw(cid)}}
-function cPack(got,title){const o=$('cardBig').querySelector('.inner');o.innerHTML=`<div class="n" style="font:800 20px Archivo;color:#fff;margin-bottom:10px">${esc(title)}</div><div class="cgrid" style="grid-template-columns:repeat(${Math.min(3,got.length)},1fr)">${got.map((id,i)=>{const c=CARDS.by[id];return c?cTile(c,1,i*.45):''}).join('')}</div><div class="btns"><button onclick="$('cardBig').classList.remove('on')">Add to album</button></div>`;$('cardBig').classList.add('on');
+function cPack(got,title){const o=$('cardBig').querySelector('.inner');o.innerHTML=`<div class="n" style="font:800 20px Archivo;color:#fff;margin-bottom:10px">${esc(title)}</div><div class="cgrid" style="grid-template-columns:repeat(${Math.min(3,got.length)},1fr)">${got.map((id,i)=>{const c=CARDS.by[id];return c?cTile(c,1,i*.45):''}).join('')}</div><div class="btns"><button onclick="document.getElementById('cardBig').classList.remove('on')">Add to album</button></div>`;$('cardBig').classList.add('on');
  o.querySelectorAll('.card').forEach(el=>el.onclick=()=>cBig(el.dataset.cid));sfx&&sfx('pop')}
 function sfx(){}
 async function openCards(){openSheet('shCards');if(!LIVE){$('cardsBody').innerHTML=`<h2>Trading cards</h2><div class="sm">Collect and trade cards on the website: <a class="p" href="${SITE}" target="_blank" rel="noopener">${SITE.replace('https://','')}</a></div>`;return}
@@ -2675,7 +2682,7 @@ let resetArm=0;
 function chartSVG(pts,x0,x1,unit,pre){pts=(pre||[]).concat(pts).filter(p=>p[0]>=x0);const W=320,H=110,ys=pts.map(p=>p[1]),y0=Math.min(...ys),y1=Math.max(...ys),X=x=>((x-x0)/(x1-x0))*(W-40)+30,Yp=y=>H-14-((y-y0)/((y1-y0)||1))*(H-28);
  const d=pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+','+Yp(p[1]).toFixed(1)).join(''),nx=X(clamp(simY,x0,x1));
  return `<svg class="ch" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#ff8a3d" stroke-width="2"/><line x1="${nx}" x2="${nx}" y1="6" y2="${H-14}" stroke="#fff" stroke-dasharray="3 3" opacity=".6"/><text x="2" y="12" fill="#bdb5a7" font-size="10">${y1.toFixed(y1<10?1:0)} ${unit}</text><text x="2" y="${H-16}" fill="#bdb5a7" font-size="10">${y0.toFixed(y0<10?1:0)}</text><text x="30" y="${H-2}" fill="#bdb5a7" font-size="10">${fmtY(x0)}</text><text x="${W-10}" y="${H-2}" fill="#bdb5a7" font-size="10" text-anchor="end">${fmtY(x1)}</text></svg>`}
-let LITE=LS.get('hl_lite')==='1';function applyLite(){renderer.setPixelRatio(LITE?1:(typeof qPR==='function'?qPR():Math.min(devicePixelRatio,2)));resize();if(treeM.tuft){treeM.tuft.visible=!LITE;treeM.flower.visible=!LITE}if(clouds)clouds.visible=!LITE&&(typeof CLOUDS==='undefined'||CLOUDS);if(cityP)cityP.material.size=LITE?2:2.6}
+let LITE=LS.get('hl_lite')==='1';function applyLite(){renderer.setPixelRatio(LITE?1:(typeof qPR==='function'?qPR():Math.min(devicePixelRatio,2)));resize();if(treeM.tuft){treeM.tuft.visible=!LITE;treeM.flower.visible=!LITE}if(clouds)clouds.visible=!LITE&&(typeof CLOUDS==='undefined'||CLOUDS);if(cityP)cityP.material.uniforms.sz.value=LITE?2:2.6}
 function renderInfo(){const d=curDay();
  const rate=d>=TOTDAYS?'Real time (1 year = 1 year)':rateText(d)+' · the clock slows as humans arrive: about 2 years a second for the age of mammals, 1 year every 36 minutes for written history, 1 year every 10 hours from 1800';
  const nx=ERAS.find(e=>e[0]>simY);let nxt='';if(nx){const ms=(dayAt(nx[0])-d)*864e5;const dd=Math.floor(ms/864e5),hh=Math.floor(ms%864e5/36e5),mm=Math.floor(ms%36e5/6e4);nxt=`<div class="row"><span>Next era</span><span>${esc(nx[1])} in ${dd?dd+'d ':''}${hh}h ${mm}m</span></div>`}
@@ -2715,15 +2722,18 @@ function bigPos(b){const p=b.y<-5e6?paleoPos(b.lat,b.lon,b.y):[b.lat,b.lon];retu
 function cd(days){const s=Math.max(0,days*86400);const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=Math.floor(s%60);return d?`${d}d ${h}h ${m}m`:h?`${h}h ${m}m ${x}s`:`${m}m ${x}s`}
 let HOTS=[];
 function hotMesh(){const g=new THREE.Group();const ring=new THREE.Mesh(new THREE.RingGeometry(.8,1,48),new THREE.MeshBasicMaterial({color:0xff8a3d,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));const beam=new THREE.Mesh(new THREE.CylinderGeometry(.12,.35,14,12,1,true).translate(0,7,0),new THREE.MeshBasicMaterial({color:0xffb070,transparent:true,opacity:.35,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));ring.rotation.x=-Math.PI/2;g.add(ring,beam);g.ring=ring;g.beam=beam;scene.add(g);return g}
-function updBig(dt){const d=curDay(),now=performance.now()/1000;
+const BIGTH=[[30,'in 30 days'],[7,'in 7 days'],[1,'tomorrow'],[1/24,'in 1 hour'],[1/1440,'in 1 minute']],_hY=new THREE.Vector3(0,1,0),_hV=new THREE.Vector3(),_hXY=[];
+function updBig(dt){const d=curDay(),now=performance.now()/1000;let nh=0;
  for(const b of BIG){const left=dayAt(b.y)-d;
-  for(const[th,lbl]of[[30,'in 30 days'],[7,'in 7 days'],[1,'tomorrow'],[1/24,'in 1 hour'],[1/1440,'in 1 minute']]){if(left<=th&&left>th*.5&&!b.ann[th]&&!catching){b.ann[th]=1;toast(`<b>Coming ${lbl}:</b> ${esc(b.t)}<br><span class="sm">Tap Events to watch from the hotspot</span>`,6000)}}
+  for(const[th,lbl]of BIGTH){if(left<=th&&left>th*.5&&!b.ann[th]&&!catching){b.ann[th]=1;toast(`<b>Coming ${lbl}:</b> ${esc(b.t)}<br><span class="sm">Tap Events to watch from the hotspot</span>`,6000)}}
   if(left<=0&&left>-.0005&&!b.ann.now&&!catching){b.ann.now=1;slowFor(b);playScene(b);toast(`<b>Happening now:</b> ${esc(b.t)}<br><span class="sm">Slowing time so you can watch</span>`,6000);stopAuto();flyTo(bigPos(b),b.t.startsWith('Asteroid')?55:2.5)}
   const act=left<=HOTLEAD&&left>-.002;let h=HOTS.find(x=>x.b===b);
   if(act&&!h){h={b,g:hotMesh(),d:document.createElement('div')};h.d.className='geo s';h.d.style.pointerEvents='auto';h.d.style.cursor='pointer';h.d.onclick=()=>{stopAuto();flyTo(bigPos(b),2)};document.body.appendChild(h.d);HOTS.push(h)}
   if(!act&&h){scene.remove(h.g);h.d.remove();HOTS=HOTS.filter(x=>x!==h);continue}
-  if(h){const U=bigPos(b),k=.5+.5*Math.sin(now*3),sc=Math.max(.15,cam.alt*.03);h.g.position.copy(U).multiplyScalar(R+Math.max(0,hDir(U.x,U.y,U.z))+.01);h.g.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),U);h.g.scale.setScalar(sc*(1+k*.3));h.g.ring.material.opacity=.4+.5*k;
-   h.d.textContent=`⏳ ${b.t} · ${left>0?cd(left):'now'}`;const v=h.g.position.clone();const cp=camera.position;if((v.x-cp.x)*U.x+(v.y-cp.y)*U.y+(v.z-cp.z)*U.z>0){h.d.style.display='none';continue}v.project(camera);if(v.z>1){h.d.style.display='none';continue}h.d.style.display='block';h.d.style.transform=`translate(${((v.x+1)/2*innerWidth)|0}px,${((1-v.y)/2*innerHeight)|0}px) translate(-50%,-140%)`}}
+  if(h){const U=bigPos(b),k=.5+.5*Math.sin(now*3),sc=Math.max(.15,cam.alt*.03);h.g.position.copy(U).multiplyScalar(R+Math.max(0,hDir(U.x,U.y,U.z))+.01);h.g.quaternion.setFromUnitVectors(_hY,U);h.g.scale.setScalar(sc*(1+k*.3));h.g.ring.material.opacity=.4+.5*k;
+   const txt=`⏳ ${b.t} · ${left>0?cd(left):'now'}`;if(h.t!==txt){h.t=txt;h.d.textContent=txt}const v=_hV.copy(h.g.position);const cp=camera.position;if((v.x-cp.x)*U.x+(v.y-cp.y)*U.y+(v.z-cp.z)*U.z>0||v.project(camera).z>1){if(h.vis!==0){h.vis=0;h.d.style.display='none'}continue}if(h.vis!==1){h.vis=1;h.d.style.display='block'}
+   let x=((v.x+1)/2*innerWidth)|0,y=((1-v.y)/2*innerHeight)|0;for(let j=0;j<nh;j++){const o=_hXY[j];if(Math.abs(o[0]-x)<150&&Math.abs(o[1]-y)<20){y=o[1]-22;j=-1}}(_hXY[nh]||(_hXY[nh]=[0,0]))[0]=x;_hXY[nh++][1]=y;
+   const tf=`translate(${x}px,${y}px) translate(-50%,-140%)`;if(h.tf!==tf){h.tf=tf;h.d.style.transform=tf}}}
  const nx=BIG.find(b=>dayAt(b.y)>d);$('next').innerHTML=nx?`Next big event: <b>${esc(nx.t)}</b> in ${cd(dayAt(nx.y)-d)}`:'';}
 // ================== the asteroid ==================
 let IMP=null;

@@ -1,6 +1,10 @@
 [
  {
   "when": "Nov 27",
+  "text": "Night-side city lights now glow by size: big metros shine wider and brighter from space while small towns stay pinpricks. Countdown labels for upcoming events no longer pile on top of each other when two land on the same city, the \"Add to album\" button after opening a card pack works again on iPhone, and planes and ships cost less to animate."
+ },
+ {
+  "when": "Nov 27",
   "text": "Sharper mountains up close: fly low over the Himalaya, the Alps, the Andes, the Rockies or the East African Rift and the ground now shows the real ridges and valleys, from NOAA's ETOPO1 elevation data at 4 arc-minutes (about 7 km), loaded only when you get close."
  },
  {
@@ -154,9 +158,5 @@
  {
   "when": "Nov 27",
   "text": "Follow a species and get an alert when it goes extinct; cloud on/off button; tap anywhere for a card about that spot"
- },
- {
-  "when": "Nov 27",
-  "text": "Ideas board with voting, live chat, viewer count, phone alerts, badges, clips, music and streamer mode"
  }
 ]
