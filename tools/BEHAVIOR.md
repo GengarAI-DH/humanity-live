@@ -2,6 +2,9 @@
 
 Systems upgraded so far, so the next run picks something different. Already done before this log started: grazing and browsing, herds, predator territories, sleeping animals, predators eating catches, sea predators hunting, herbivores standing their ground, rival predators fighting, species interaction rules.
 
+## Nov 28 2026 (ECOSYSTEM run): 366 new interaction rules and a grooms kind
+- Run type: ecosystem. Details in ECOLOG.md. Handoff: migration popup throttle, tar pits and home ranges already in main; nothing else open for behavior/ecosystem that fits the slot. Next run: BEHAVIOR.
+
 ## Nov 28 2026 (BEHAVIOR run): farm animals keep a farmer's day; cars park at night and crawl in rush hour
 - Run type: behavior. Handoff check: the migration popup throttle (annoy.py item) is already in main (mgTT, one migration toast per 90 s); tar pits and home ranges are done.
 - What changed (pickAT/stockAT/locHr in 28-species-fossils.js, speed factor spf in updAnimals): livestock (sheep, goats, cattle, camels, pigs, horses, buffalo, yak, llamas, alpacas, reindeer, donkeys) and poultry around villages and towns now follow the village's local solar time instead of wandering at random all day. Night (sun below the horizon): back at a pen beside a house, mostly still. First light: the whole herd is driven out together to one pasture side of the settlement. Morning: grazing in small steps ("the big early-morning bout"). 11:00-14:30: standing still, resting and chewing the cud. Afternoon: grazing again ("the longest bout of the day, before dusk"). Around sunset: driven home to the pen. Poultry: let out at first light, scratching and pecking, resting in the shade at midday, back to roost at dusk.
