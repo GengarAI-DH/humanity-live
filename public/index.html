@@ -84,6 +84,8 @@ body.stream #dock,body.stream #rot,body.stream #pills,body.stream #place,body.st
 .card .q{position:absolute;top:4px;right:6px;font:800 11px Archivo;background:rgba(0,0,0,.5);border-radius:8px;padding:1px 5px}
 .card.no{filter:grayscale(1) brightness(.45)}.card.no .e{opacity:.35}
 .card.r5{box-shadow:0 0 14px #f59e0b88}.card.r4{box-shadow:0 0 10px #a855f766}
+#pvBar{position:fixed;right:8px;top:calc(env(safe-area-inset-top) + 8px);z-index:55;background:#2a1d0ef2;border:1px solid #f5c54288;color:#f5e6c4;border-radius:12px;padding:6px 8px;font-size:12px;text-align:center;max-width:46vw}
+#pvBar button{margin:5px 3px 0;font-size:12px;padding:3px 9px}
 .card.half .e{opacity:.55}
 .card.done{box-shadow:0 0 0 2px #f5c542,0 0 14px #f5c54288}
 .card .ck{position:absolute;right:6px;bottom:4px;font:800 11px Archivo;color:#f5c542}
@@ -1071,7 +1073,7 @@ async function saveShared(){if(!DB||!LEAD||saving||catching)return;saving=true;t
 async function loadShared(meta){const A_=[],D_=[];for(let i=0;i<(meta.nA||0);i++){const d=await DB.doc('world/a'+i).get();if(!d.exists)continue;const x=d.data();if(x.sid!==meta.sid)return false;A_.push(...x.l.map(unpackA))}
  for(let i=0;i<(meta.nD||0);i++){const d=await DB.doc('world/d'+i).get();if(d.exists&&d.data().sid===meta.sid)D_.push(...d.data().l.map(unpackD))}
  restore({simY:meta.simY,NID:meta.NID||1,discI:meta.discI||0,EV:meta.EV||[],A:A_,D:D_});if(meta.lead)meta.lead.forEach((x,i)=>{if(S[i]){S[i].lead=x[0];S[i].dyn=x[1]}});SID=meta.sid;loadedSaved=meta.saved||0;return true}
-function save(){if(DB){saveShared();return}const st={v:2,start:started,simY,NID,followId,discI,EV:EV.slice(0,150),A:A.map(packA),D:[...D.values()].slice(-1500).map(packD)};
+function save(){if(PV!==null)return;if(DB){saveShared();return}const st={v:2,start:started,simY,NID,followId,discI,EV:EV.slice(0,150),A:A.map(packA),D:[...D.values()].slice(-1500).map(packD)};
  if(!LS.set(KEY,JSON.stringify(st))){st.D=[];st.EV=st.EV.slice(0,40);LS.set(KEY,JSON.stringify(st))}}
 function loadLocal(){const raw=LS.get(KEY);if(!raw)return null;try{const s=JSON.parse(raw);s.A=(s.A||[]).map(unpackA);s.D=(s.D||[]).map(unpackD);return s}catch(e){return null}}
 function restore(st){A=[];AM.clear();D.clear();simY=st.simY;NID=st.NID;discI=st.discI||0;EV=st.EV||[];if(st.followId)followId=st.followId;
@@ -2630,7 +2632,7 @@ function director(dt){if(!STREAM)return;dirT-=dt;if(dirT>0)return;const live=SCN
  const c=S.filter(s=>s.built&&s.tier>=0&&s.pop>0);if(c.length){const s=pick(c);flyTo(s.U,.6+s.rad*1.2);dirT=35}else{const z=pick(WZ.filter(z=>!z.water&&z.key));if(z){flyTo(z.U,.7);dirT=35}}}
 // ---- live: chat, viewers, heat map, alerts (on the website) ----
 let LIVE=false,LIVEN=0,WS=null,wsBack=1000,HEAT=null,MUTED=new Set(JSON.parse(LS.get('hl_mute')||'[]'));
-async function liveInit(){try{const r=await fetch('/api/world',{cache:'no-store'});if(!r.ok)return;const j=await r.json();if(!j||!j.name)return;LIVE=true;window.__VAPID=j.vapid;liveConnect();analytics();setTimeout(cLoad,4000)}catch(e){}}
+async function liveInit(){if(PVQ!==null)return;try{const r=await fetch('/api/world',{cache:'no-store'});if(!r.ok)return;const j=await r.json();if(!j||!j.name)return;LIVE=true;window.__VAPID=j.vapid;liveConnect();analytics();setTimeout(cLoad,4000)}catch(e){}}
 function liveConnect(){try{WS=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/live')}catch(e){return}
  WS.onopen=()=>{wsBack=1000;sendPos()};WS.onclose=()=>{WS=null;setTimeout(liveConnect,wsBack=Math.min(30000,wsBack*2))};
  WS.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(m.t==='hist'){CHAT=m.m;drawChat()}else if(m.t==='msg'){CHAT.push(m.m);if(CHAT.length>200)CHAT.shift();drawChat();if(!$('shChat').classList.contains('on')&&!MUTED.has(m.m.name)){UNREAD++;$('pChat').textContent=`💬 Chat (${UNREAD})`}}else if(m.t==='stats'){LIVEN=m.watching;$('pWatch').textContent=` · 👁 ${m.watching}`;drawHeat(m.heat)}else if(m.t==='err'){$('chatErr').textContent=m.e}else if(m.t==='ideas'){IDEAS=m.list;MYV=new Set(m.mine);drawIdeas()}else if(m.t==='ideas_dirty'){if($('shIdeas').classList.contains('on'))WS.send(JSON.stringify({t:'ideas'}))}else if(m.t==='ierr'){$('ideaErr').textContent=m.e}else if(m.t==='iok'){$('ideaIn').value='';$('ideaName').style.display='none';toast('💡 Idea posted. Thanks!')}else if(m.t==='reports'){showWikiThing('Reported messages',m.list.length?m.list.map(r=>[`${r.n}× · ${r.name}`,r.text||'(shared spot)']):[['None','No reports right now']],'Content moderation')}else if(m.t==='del'){CHAT=CHAT.filter(x=>x.id!==m.id);drawChat()}else if(m.t==='purge'){CHAT=CHAT.filter(x=>x.name!==m.name);drawChat()}}}
@@ -2894,8 +2896,8 @@ function openSettings(){const B=document.body.classList,rows=[
  ['Compact date panel','Hide the extra lines under the date',()=>B.contains('mini'),()=>$('hudT').click()],
  ['All side buttons','Show rotate, favorite, clouds and sound buttons',()=>!B.contains('rmini'),()=>$('rotT').click()],
  ['Temperature in °F','Off shows °C',()=>UNIT()==='F',()=>LS.set('hl_unit',UNIT()==='F'?'C':'F')]];
- $('setBody').innerHTML=rows.map((r,i)=>`<div class="setrow"><div>${esc(r[0])}${r[1]?`<span class="sm">${esc(r[1])}</span>`:''}</div><button data-i="${i}" class="${r[2]()?'on':''}">${r[2]()?'On':'Off'}</button></div>`).join('')+`<div class="btns" style="margin-top:12px"><button id="setTour">Show me around again</button><button id="setPriv">Privacy</button></div><div class="sm" style="margin-top:10px"><a class="p" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="p" href="/terms" target="_blank" rel="noopener">Terms of use</a></div>`;
- $('setBody').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{rows[+b.dataset.i][3]();setTimeout(openSettings,60)});$('setTour').onclick=()=>{closeSheets();runTour(0)};$('setPriv').onclick=showPrivacy;openSheet('shSet')}
+ $('setBody').innerHTML=rows.map((r,i)=>`<div class="setrow"><div>${esc(r[0])}${r[1]?`<span class="sm">${esc(r[1])}</span>`:''}</div><button data-i="${i}" class="${r[2]()?'on':''}">${r[2]()?'On':'Off'}</button></div>`).join('')+`<div class="btns" style="margin-top:12px"><button id="setTour">Show me around again</button>${LS.get('hl_admin')?'<button id="setTM">⏳ Time machine</button>':''}<button id="setPriv">Privacy</button></div><div class="sm" style="margin-top:10px"><a class="p" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="p" href="/terms" target="_blank" rel="noopener">Terms of use</a></div>`;
+ $('setBody').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{rows[+b.dataset.i][3]();setTimeout(openSettings,60)});$('setTour').onclick=()=>{closeSheets();runTour(0)};$('setPriv').onclick=showPrivacy;if($('setTM'))$('setTM').onclick=openTimeMachine;openSheet('shSet')}
 
 // ---- share the exact view: a link that opens at this spot and height ----
 function shareView(){const p=ll(cam.t.x,cam.t.y,cam.t.z),pl=placeName(cam.t)||'',url=`${SITE}/?v=${p[0].toFixed(3)},${p[1].toFixed(3)},${cam.alt.toFixed(2)}`,text=`${$('year').textContent}${pl?' · '+pl:''}, live in Humanity, Live`;
@@ -3139,13 +3141,22 @@ trimUploads(); const _t1=performance.now();renderer.render(scene,camera);if(wind
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+// ---- time machine (owner only): open any era on this device; the shared world is never touched ----
+const PVQ=(()=>{const m=/^#preview=(-?\d+(?:\.\d+)?)$/.exec(location.hash);return m&&!window.__TEST&&LS.get('hl_admin')?+m[1]:null})();let PV=null;
+async function pvCheck(){if(PVQ===null)return;let ok=false;try{const r=await fetch('/api/admin/check',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({key:LS.get('hl_admin')})});ok=r.ok&&(await r.json()).ok}catch(e){}if(!ok){location.hash='';location.reload();return new Promise(()=>{})}PV=clamp(PVQ,-71.2e6,2100)}
+function pvBanner(){const d=document.createElement('div');d.id='pvBar';d.title='Time machine: only on this device';d.innerHTML=`⏳ <b>${esc(fmtY(PV))}</b> preview<br><button id="pvBack">Live</button><button id="pvPick">Change</button>`;document.body.appendChild(d);$('pvBack').onclick=()=>{location.hash='';location.reload()};$('pvPick').onclick=openTimeMachine}
+const TM_ERAS=[['Last dinosaurs',-68e6],['The asteroid hits',-66040300],['Rise of the mammals',-55e6],['Age of grasslands',-15e6],['First humans',-2e6],['Ice Age peak',-20000],['First farms',-9000],['Ancient world',-500],['Middle Ages',1200],['Age of exploration',1500],['Industrial age',1850],['World War II',1942],['Moon landing',1969],['Today',2026],['The future',2080]];
+function openTimeMachine(){$('setBody').innerHTML=`<div class="sm">Look at any time on this device only. Nobody else sees it, and the shared live world keeps running.</div><div class="btns" style="flex-wrap:wrap;margin-top:10px">${TM_ERAS.map((e,i)=>`<button data-e="${i}">${esc(e[0])}<br><span class="sm">${esc(fmtY(e[1]))}</span></button>`).join('')}</div><div class="sm" style="margin-top:12px">Or a year (use minus for BC, e.g. -3000, or -66000000)</div><div class="row2"><input id="tmY" inputmode="numeric" placeholder="1776"><button id="tmGo">Go</button></div>`;
+ const go=y=>{if(!isFinite(y))return toast('Type a year like 1776 or -3000');location.hash='preview='+Math.round(clamp(y,-71.2e6,2100));location.reload()};
+ $('setBody').querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>go(TM_ERAS[+b.dataset.e][1]));$('tmGo').onclick=()=>go(parseFloat(String($('tmY').value).replace(/,/g,'')));openSheet('shSet')}
 async function boot(){
- $('load').textContent='Connecting to the shared world…';DB=await getDB();let meta=null;
+ await pvCheck();
+ $('load').textContent=PV!==null?'Opening the time machine…':'Connecting to the shared world…';DB=PV!==null?null:await getDB();let meta=null;
  if(DB){try{const m=await Promise.race([DB.doc('world/meta').get(),new Promise((_,j)=>setTimeout(()=>j('t'),10000))]);if(m.exists)meta=m.data()}catch(e){DB=null}}
  if(DB&&meta){started=meta.start;$('load').textContent='Loading the world…';const ok=await loadShared(meta);if(!ok){await new Promise(r=>setTimeout(r,3000));const m2=await DB.doc('world/meta').get();if(m2.exists)await loadShared(m2.data())}await lease()}
  else if(DB){await lease();started=Date.now();newWorld();if(LEAD)await saveShared()}
  else{let ws=null;try{const r=await fetch('/api/world',{cache:'no-store'});if(r.ok)ws=await r.json()}catch(e){}const st0=ws&&ws.start?ws.start:+LS.get(KEY+'_start');started=st0||Date.now();if(!st0)LS.set(KEY+'_start',String(started));if(ws&&ws.start)window.__WEB=1;const sv=loadLocal();if(sv&&sv.start===started)restore(sv);else newWorld();$('clock').dataset.local='1'}
- if(window.__TEST&&window.__TESTY!==undefined){window.__OFF=dayAt(window.__TESTY)-(Date.now()-started)/864e5;const Y=window.__TESTY;if(Y>=-70000){regen(Y)}else{simY=Y;A=[];AM.clear()}}
+ if((window.__TEST&&window.__TESTY!==undefined)||PV!==null){const Y=PV!==null?PV:window.__TESTY;window.__OFF=dayAt(Y)-(Date.now()-started)/864e5;if(Y>=-70000){regen(Y)}else{simY=Y;A=[];AM.clear()}}
  for(const s of S){s.tier=tierAt(s,simY);if(s.tier===-1)s.rt=ruinTier(s);frameSite(s)}
  favSync(false);tally();applyClimate(simY,true);updSun();for(const z of WZ)frameSite(z);placeZones(simY);rebuildAll();
  if(A.length){const best=S.filter(x=>x.pop>0).sort((a,b)=>b.tier-a.tier||b.pop-a.pop);const fa=followId&&AM.get(followId);cam.t.copy(fa?S[fa.s].U:(best.length?pick(best.slice(0,6)).U:SK.omo.U))}
@@ -3153,7 +3164,7 @@ async function boot(){
  cam.alt=1.1;setBtn();updHud()}
 function newWorld(){A=[];AM.clear();D.clear();simY=yearAt(0);NID=1;discI=0;EV=[];while(discI<DISC.length&&DISC[discI][0]<=simY){const d=DISC[discI++];EV.unshift({y:d[0],t:d[1],k:d[2]})}}
 async function start(){setTimeout(()=>{loadCities();applyLite()},2500);initGeo();initTerrain();initPlates();applyClimate(-70000,true);makeGlobe();initMeshes();initLabels();initTags();initGeo2();initSpace();resize();await boot();
- $('load').style.display='none';if(!LS.get(KEY+'_seen')){$('intro').style.display='grid'}requestAnimationFrame(frame)}
+ $('load').style.display='none';if(PV!==null)pvBanner();if(!LS.get(KEY+'_seen')){$('intro').style.display='grid'}requestAnimationFrame(frame)}
 $('go').onclick=()=>{$('intro').style.display='none';LS.set(KEY+'_seen','1');if(LS.get('hl_tour')!=='1')setTimeout(()=>runTour(0),1200)};
 if(window.__TEST)window.HS={X:c=>eval(c),get S(){return S},get A(){return A},get WA(){return WA},cam,fly:(k,alt)=>{const s=SK[k]||WZ[k];cam.t.copy(s.U);cam.alt=alt||.8;cam.fly=null},flyV:(la,lo,alt)=>{cam.t.copy(v3(la,lo,1));cam.alt=alt;cam.fly=null},impact:startImpact};
 setTimeout(()=>{start().catch(err=>{$('load').textContent='Something went wrong: '+err.message;console.error(err)})},30);

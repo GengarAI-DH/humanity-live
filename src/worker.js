@@ -325,6 +325,7 @@ async function loadBackup(env, day) {
 async function adminApi(op, request, env, room) {
   const b = request.method === "POST" ? await request.json().catch(() => ({})) : {}, key = b.key || new URL(request.url).searchParams.get("key");
   if (!env.ADMIN_KEY || key !== env.ADMIN_KEY) return J({ ok: false }, 403);
+  if (op === "check") return J({ ok: true });
   if (op === "backups") return J({ ok: true, index: JSON.parse((await env.BACKUPS.get("index")) || "[]") });
   if (op === "backup") return J(await runBackup(env, room, true));
   if (op === "restore") {

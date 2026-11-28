@@ -45,6 +45,7 @@ All of these need `python3 build.py` first (they load `tools/test.html`) and run
 - A city is hidden before its founding year; cities of 500k+ get a "founded" / "first written record" event (`FD`, `fireFounding`).
 
 ## Backups and admin
+- Time machine (owner only): with the admin key saved (type `/admin <key>` in chat once), Settings shows Time machine. It opens `/#preview=<year>`, which the server confirms with `/api/admin/check`; that view runs on the device only: no shared-world connection, no saving, no cards or chat. Without a valid key the hash is dropped and the live world loads.
 - Every night (11:00 UTC, about 3 AM Pacific) the worker saves the world, chat, ideas, alerts and all cards to the BACKUPS KV namespace (gzip, last 30 days). POST /api/admin/backups {key} lists them; POST /api/admin/backup {key} makes one now; POST /api/admin/restore {key, day, confirm:"RESTORE <day>", tables:[...]} restores (it saves the current state first). The key is the ADMIN_KEY secret; never put it in the repo.
 - Never change table layouts in a way that breaks restoring older backups.
 
