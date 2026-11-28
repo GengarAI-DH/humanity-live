@@ -31,5 +31,6 @@ tools/regions.json
 .dev.vars
 tools/sky.json
 tools/heritage.json
+tools/skyline.json
 tools/inventions.json
 tools/ice.json
