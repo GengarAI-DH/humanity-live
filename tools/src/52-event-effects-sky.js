@@ -1,0 +1,132 @@
+// ---- what each big event looks like ----
+const SC_={
+ 'Sparta holds Thermopylae':['battle',{a:['Spartans & Greek allies (~7,000)',0xb02a2a,0,'bow'],b:['Persian army (100,000+)',0xc89a3a,.1,'bow'],win:'b',n:90,label:'Thermopylae, 480 BC'}],
+ 'Battle of Marathon':['battle',{a:['Athenians (~10,000)',0x3a6ac0,0,'bow'],b:['Persians (~25,000)',0xc89a3a,.1,'bow'],win:'a',label:'Marathon, 490 BC'}],
+ 'Battle of Gaugamela':['battle',{a:['Alexander’s Macedonians (~47,000)',0xb02a2a,.2,'bow'],b:['Persian Empire (~100,000)',0xc89a3a,.25,'bow'],win:'a',label:'Gaugamela, 331 BC'}],
+ 'Battle of Cannae':['battle',{a:['Hannibal’s Carthaginians (~50,000)',0x6a3a8a,.2,'bow'],b:['Roman legions (~86,000)',0xb02a2a,.06,'bow'],win:'a',label:'Cannae, 216 BC'}],
+ 'Julius Caesar is assassinated':['assn',{stab:true,attackers:22,crowd:50,label:'Ides of March, 44 BC: Caesar is stabbed 23 times in the Senate',tgtC:0x8a2a8a,cols:[0xeeeae0,0xdcd6c8]}],
+ 'Battle of Hastings':['battle',{a:['Normans (~8,000)',0x3a6ac0,.3,'bow'],b:['English (~8,000)',0xb02a2a,0,'bow'],win:'a',label:'Hastings, 1066'}],
+ 'The Mongol Empire is founded':['battle',{a:['Mongol horsemen',0x7a5a2a,.85,'bow'],b:['Rival steppe tribes',0x4a6a8a,.4,'bow'],win:'a',label:'Genghis Khan unites the steppe, 1206'}],
+ 'Mongols invade the Khwarazmian Empire':['battle',{a:['Mongol army (~100,000)',0x7a5a2a,.9,'bow'],b:['Khwarazmian army',0x2a7a5a,.2,'bow'],win:'a',n:130,label:'Mongols take Samarkand, 1220'}],
+ 'Battle of Mohi':['battle',{a:['Mongols under Batu & Subutai',0x7a5a2a,.9,'bow'],b:['Hungarian army',0xb02a2a,.35,'bow'],win:'a',label:'Mohi, 1241'}],
+ 'Mongols sack Baghdad':['battle',{a:['Mongols under Hulagu (~150,000)',0x7a5a2a,.6,'gun'],b:['Abbasid defenders',0x2a2a2a,.1,'bow'],win:'a',n:130,label:'Siege of Baghdad, 1258'}],
+ 'The fall of Constantinople':['battle',{a:['Ottoman army (~80,000) with giant cannons',0xb02a2a,.2,'gun'],b:['Byzantine defenders (~7,000)',0x6a3a8a,0,'bow'],win:'a',label:'Constantinople falls, 1453'}],
+ 'The fall of Tenochtitlan':['battle',{a:['Spanish & Tlaxcalan allies',0x8a8a8a,.1,'gun'],b:['Aztec warriors',0x2a8a6a,0,'bow'],win:'a',n:120,label:'Siege of Tenochtitlan, 1521'}],
+ 'The Great Fire of London':['fire',{label:'Great Fire of London, 1666: 13,200 houses burn',r:.1,spd:400}],
+ 'The Lisbon earthquake':['quake',{M:8.7,fire:true,ts:15,tsAt:[36.5,-10.5],tsR:12,label:'Lisbon, 1755: magnitude ~8.7, then fire and a 15 m tsunami'}],
+ 'Battle of Waterloo':['battle',{a:['British & Prussian armies (~118,000)',0xb02a2a,.2,'gun'],b:['Napoleon’s French army (~73,000)',0x2a4ab0,.25,'gun'],win:'a',label:'Waterloo, 1815'}],
+ 'Tambora erupts':['erupt',{vei:7,label:'Tambora, 1815: the largest eruption in recorded history (VEI 7)',ts:4,tsR:8}],
+ 'Battle of Gettysburg':['battle',{a:['Union (~94,000)',0x2a3a8a,.1,'rifle'],b:['Confederacy (~72,000)',0x8a8a8a,.1,'rifle'],win:'a',label:'Gettysburg, 1863'}],
+ 'President Lincoln is assassinated':['assn',{label:'Ford’s Theatre, April 14, 1865: Lincoln is shot',crowd:90,tgtH:.02,from:[.012,.004,.02],bld:[[0,.02,.03,.02,0x8a4a2a]],killer:false}],
+ 'Krakatoa erupts':['erupt',{vei:6,label:'Krakatoa, 1883: heard 4,800 km away; tsunamis up to 30 m',ts:30,tsR:15}],
+ 'The Titanic sinks':['ship',{label:'RMS Titanic, April 15, 1912: about 1,500 die'}],
+ 'Franz Ferdinand is assassinated; World War I begins':['assn',{car:true,label:'Sarajevo, June 28, 1914: Archduke Franz Ferdinand is shot',hitT:9,shots:2}],
+ 'Battle of the Somme':['battle',{a:['British & French',0x6a6a3a,0,'mod'],b:['Germans',0x5a6a6a,0,'mod'],win:'a',tanks:3,label:'The Somme, 1916: over a million casualties'}],
+ 'Pearl Harbor is attacked':['raid',{label:'Pearl Harbor, December 7, 1941'}],
+ 'Battle of Stalingrad':['battle',{a:['Soviet Red Army',0x7a2a2a,0,'mod'],b:['German 6th Army',0x5a6a6a,0,'mod'],win:'a',label:'Stalingrad, 1942–43: about 2 million casualties'}],
+ 'D-Day: the Allies land in Normandy':['battle',{a:['Allied troops (~156,000)',0x6a6a3a,0,'mod'],b:['German defenders',0x5a6a6a,0,'mod'],win:'a',landing:true,tanks:0,label:'Normandy, June 6, 1944'}],
+ 'The atomic bomb':['nuke',{label:'Hiroshima, August 6, 1945: a 15-kiloton atomic bomb',second:[32.75,129.87,'Nagasaki, August 9, 1945: a 21-kiloton atomic bomb',3]}],
+ 'Gandhi is assassinated':['assn',{label:'New Delhi, January 30, 1948: Gandhi is shot on his way to prayer',crowd:90,shots:3,hitT:8,cols:[0xf0ece0,0xe8e0cc,0xc8b89a]}],
+ 'President Kennedy is assassinated':['assn',{car:true,lead:true,label:'Dallas, November 22, 1963: President Kennedy is shot',from:[.02,.075,.04],bld:[[.02,.075,.035,.045,0xa0522d]],hitT:10,shots:3,carC:0x101018,killer:false}],
+ 'The Moon landing':['launch',{label:'Apollo 11 lifts off, July 16, 1969'}],
+ 'Martin Luther King Jr. is assassinated':['assn',{label:'Memphis, April 4, 1968: Dr. King is shot on the motel balcony',crowd:30,tgtH:.022,bld:[[0,0,.06,.02,0xc8c0a8],[.0,.09,.04,.03,0x8a6a4a]],from:[0,.09,.025],killer:false,hitT:8}],
+ 'Chernobyl explodes':['erupt',{vei:4,label:'Chernobyl, April 26, 1986: reactor 4 explodes',dur:60}],
+ 'The Berlin Wall falls':['crowd',{label:'Berlin, November 9, 1989: the Wall opens'}],
+ 'The September 11 attacks':['911',{label:'New York, September 11, 2001'}],
+ 'The Indian Ocean tsunami':['quake',{M:9.1,ts:30,tsR:40,tsFly:30,tsDelay:3000,label:'Indian Ocean, 2004: magnitude 9.1, tsunami up to 30 m'}],
+ 'The Tōhoku earthquake and tsunami':['quake',{M:9.1,ts:40,tsR:35,tsAt:[38.3,142.4],tsFly:20,tsDelay:3000,label:'Tōhoku, 2011: magnitude 9.1, tsunami up to 40 m'}],
+ 'Russia invades Ukraine':['battle',{a:['Ukrainian forces',0x3a5a8a,0,'mod'],b:['Russian forces',0x5a6a4a,0,'mod'],win:'a',dur:70,label:'Ukraine, February 2022'}],
+ 'Toba supereruption':['erupt',{vei:8,label:'Toba: one of the largest eruptions of the last 2 million years (VEI 8)'}],
+ 'Yellowstone supereruption':['erupt',{vei:8,label:'Yellowstone: about 1,000 km³ of rock and ash (VEI 8)'}],
+ 'Vesuvius buries Pompeii':['erupt',{vei:5,label:'Vesuvius, AD 79: Pompeii and Herculaneum are buried'}]};
+
+// ---- every major event in the history list gets an effect ----
+const EVLOC={'The Schoolhouse Blizzard on the Great Plains':[41.2,-96.5],'The Galveston hurricane, the deadliest in US history (about 8,000 dead)':[29.3,-94.8],'The Tri-State Tornado (EF5), the deadliest in US history':[37.9,-89.2],'The 1931 China floods, the deadliest floods ever recorded':[30.6,114.3],'Black Sunday: the worst dust storm of the Dust Bowl':[36.7,-101.5],'The Bhola cyclone kills about 300,000 to 500,000 people':[22.4,90.9],'The Daulatpur–Saturia tornado, the deadliest tornado ever recorded':[23.9,90],'The European heatwave':[46.6,2.4],'The Moore tornado (EF5)':[35.34,-97.49],'Typhoon Haiyan (315 km/h winds)':[11.24,125],'Hurricane Harvey floods Houston':[29.76,-95.37],'The western North American heatwave':[50.23,-121.58],'Influenza pandemic kills tens of millions':[39.06,-96.79],'The Lisbon earthquake (about M8.7) and a 15 m tsunami':[38.72,-9.14],'Tunguska: a 50 m space rock explodes over Siberia with about 12 megatons':[60.9,101.9],'The Haiti earthquake (M7.0)':[18.46,-72.53],'Chelyabinsk: a 20 m meteor explodes with about 500 kilotons':[55.15,61.4],'Hurricane Katrina':[29.95,-90.07],'The Battle of Kadesh: Egypt vs the Hittites':[34.56,36.52],'The Haitian Revolution':[19.76,-72.2],'The Korean War':[38,127],'The Vietnam War':[16,107.5],'The Rwandan genocide':[-1.95,30.06],'World War I':[49.16,5.38],'World War II':[52.2,21],'The Great Famine in India and China':[15,78],'The COVID-19 pandemic':[30.59,114.3],'The 4.2-kiloyear drought hits early empires':[33,44],'The September 11 attacks':[40.711,-74.013],'President Kennedy is assassinated':[32.779,-96.809],'Martin Luther King Jr. is assassinated':[35.134,-90.058],'The Titanic sinks':[41.73,-49.95],'Archduke Franz Ferdinand assassinated; World War I begins':[43.856,18.414],'The Chernobyl nuclear disaster':[51.39,30.1],'The Great Plague of London':[51.51,-.09],'The Great Fire of London':[51.51,-.09],'The Holocaust: six million Jews murdered':[50.03,19.2],'The Nanjing Massacre':[32.06,118.8],'The Armenian genocide':[39.9,41.3],'The Cambodian genocide':[11.56,104.92],'The Plague of Justinian':[41.01,28.97],'The Plague of Athens':[37.98,23.73],'Cholera pandemics begin':[22.57,88.36],'The third plague pandemic':[23.1,113.3],'The Great Bengal famine':[24,88],'The Great Chinese Famine':[33,113],'Doggerland sinks beneath the North Sea':[54.5,2.5],'The Iraq War':[33.3,44.4],'Russia invades Ukraine':[50.45,30.52],'The Soviet Union collapses':[55.75,37.62],'The French Revolution':[48.853,2.369],'The Russian Revolution':[59.94,30.31],'The Mexican Revolution':[19.43,-99.13],'The Hundred Years’ War':[50.2,1.9],'The Ottoman siege of Vienna fails':[48.21,16.37],'The Opium Wars':[23.1,113.3],'The Taiping Rebellion, among the deadliest wars ever':[32.06,118.8],'The American Civil War':[39.81,-77.23],'The Peloponnesian War: Athens vs Sparta':[37.98,23.73],'Rome and Carthage fight the Punic Wars':[41.3,16.13],'Alexander the Great conquers from Greece to India':[36.57,43.43],'The legendary Trojan War':[39.96,26.24],'The Mongols sack Baghdad':[33.3,44.4],'Battle of Marathon':[38.15,23.96],'Julius Caesar is assassinated in Rome':[41.893,12.477],'Gandhi is assassinated':[28.6,77.21],'Pearl Harbor; the war goes global':[21.35,-157.95],'Atomic bombs destroy Hiroshima and Nagasaki':[34.39,132.45],'Atomic bombs end World War II':[34.39,132.45],'President Lincoln is assassinated; US slavery ends':[38.897,-77.026],'The San Francisco earthquake (M7.9)':[37.77,-122.42],'The Great Kantō earthquake (M7.9)':[35.32,139.4],'The Valdivia earthquake (M9.5), the strongest ever recorded':[-39.8,-73.2],'The Great Alaska earthquake (M9.2)':[61.0,-147.7],'The Shaanxi earthquake (about M8.0), the deadliest ever recorded':[34.5,109.7],'Turkey–Syria earthquakes (M7.8)':[37.2,37.0],'The Indian Ocean earthquake (M9.1) and tsunami up to 30 m':[3.3,95.9],'The Tōhoku earthquake (M9.1) and tsunami up to 40 m':[38.3,142.4]};
+const DONE_=new Set();
+function evKind(t){if(SKX[t])return 'sky';if(WRW[t])return t===WRW[t][13]&&WRW[t][5]>=500?'memorial':'wreck';if(BTW[t]||WHW[t]||TBW[t])return null;if(DTK[t])return DTK[t]==='impact'?'meteor':null;const sw=SWX[t];if(sw)return sw.k==='hail'?'hail':sw.k;if(/Toba|Yellowstone|Taupō|Mazama|Paektu|Samalas|Pinatubo|St\. Helens|Pelée|Tambora|Krakatoa|Thera|Campanian/.test(t)&&/erupt|supereruption|cools/i.test(t))return 'erupt';if(/^(Speculative|Projected)/.test(t))return null;if(/tornado/i.test(t))return 'tornado';if(/blizzard/i.test(t))return 'blizzard';if(/dust storm/i.test(t))return 'dust';if(/heatwave/i.test(t))return 'heat';if(/hurricane|cyclone|typhoon|Storms wreck/i.test(t)&&!/floods Houston/i.test(t))return 'storm';if(/floods|flood/i.test(t)&&!/sinks/i.test(t))return 'flood';if(/^Projected|^Speculative|first nuclear|Cold War|Green Revolution|Industrial|Medieval Warm|clay figur|chariot|Iron working|Bronze Age|Rafts|stone tools|Fire, stone/i.test(t))return null;
+ if(/genocide|massacre|Holocaust/i.test(t))return 'memorial';if(/assassinat/i.test(t))return 'assn';if(/atomic bomb/i.test(t))return 'nuke';if(/Chernobyl|nuclear disaster/i.test(t))return 'chern';
+ if(/meteor|space rock/i.test(t))return 'meteor';if(/earthquake/i.test(t))return 'quake';if(/erupt|supereruption|eruption/i.test(t))return 'erupt';if(/hurricane|cyclone|typhoon/i.test(t))return 'storm';
+ if(/plague|pandemic|cholera|influenza|COVID|Black Death|Smallpox and|Yellow fever|HIV/i.test(t))return 'sick';if(/famine|drought/i.test(t))return 'famine';if(/sinks|flood/i.test(t))return /Titanic/.test(t)?'ship':'flood';if(/Great Fire/i.test(t))return 'fire';
+ if(/collapses|falls|Revolution(?! boosts)/i.test(t)&&!/war/i.test(t))return /Soviet|Wall/.test(t)?'crowd':'revolt';if(/war\b|wars\b|battle|siege|invad|conquer|sack|rebellion|Pearl Harbor|attacks/i.test(t))return /September 11/.test(t)?'911':/Pearl/.test(t)?'raid':'battle';return null}
+function sidesOf(t,Y){const m=t.match(/:?\s*([A-Z][\w’ ]+?) vs ([A-Z][\w’ ]+)/);if(m)return[m[1].replace(/^.*: /,''),m[2]];if(/Mongol/.test(t))return['Mongols','Defenders'];if(/Ottoman/.test(t))return['Ottomans','Habsburg defenders'];if(/Opium/.test(t))return['British','Qing China'];if(/Civil War/.test(t))return['Union','Confederacy'];if(/Punic/.test(t))return['Carthage','Rome'];if(/Alexander/.test(t))return['Macedonians','Persians'];if(/Trojan/.test(t))return['Greeks','Trojans'];if(/Hundred/.test(t))return['English','French'];if(/Taiping/.test(t))return['Taiping rebels','Qing armies'];if(/Korean/.test(t))return['North Korea & China','South Korea & UN'];if(/Vietnam/.test(t))return['North Vietnam','South Vietnam & US'];if(/World War I\b/.test(t))return['Allies','Central Powers'];if(/World War II/.test(t))return['Germany','Poland'];if(/Iraq/.test(t))return['US-led coalition','Iraqi army'];if(/Ukraine/.test(t))return['Ukrainian forces','Russian forces'];return['Attackers','Defenders']}
+function sickScene(U,o){specInit();const T=tanOf(U),sc={k:'sick',U,T,o,t:0,dur:60,P:[]};for(let i=0;i<(LITE?60:120);i++){const a=rnd()*Math.PI*2,r=Math.sqrt(rnd())*.12;sc.P.push({dn:Math.cos(a)*r,de:Math.sin(a)*r,d:r,ill:r*300+rnd()*10,sev:rnd()<(o.cfr||.15)})}
+ const ring=new THREE.Mesh(new THREE.RingGeometry(.6,1,64),new THREE.MeshBasicMaterial({color:o.col||0x9acd32,transparent:true,opacity:.25,depthWrite:false,side:THREE.DoubleSide}));ring.position.copy(at(U,T,0,0,.004));ring.lookAt(0,0,0);scene.add(ring);SPEC.push({m:ring,t:0,life:60,up:(m,k)=>{m.scale.setScalar(.02+k*(o.R||.6));m.material.opacity=.3*(1-k)}});SCN.list.push(sc);slabel(U,o.label,60);return sc}
+function updSick(sc,dt){const{U,T}=sc,t=sc.t;for(const p of sc.P){const ill=t*1.5>p.ill/10,fall=ill&&p.sev?Math.min(1,(t*1.5-p.ill/10)*.2):0;fig(sc,{dn:p.dn,de:p.de,f:T.N,fall,fd:T.E},ill?(p.sev?0x7a8a5a:0xa8b890):0x8a7a6a,ill&&!p.sev)}}
+// ---- sky events you can watch: the Moon's shadow, comets, new stars, aurorae, meteor storms ----
+const GEOP=[80.7,-72.7];
+function skyScene(U,e,label){if(!e)return;specInit();const T=tanOf(U),k=e.k,x=e.x||{},sc={k:'sky',kind:k,U,T,t:0,dur:k==='eclipse'?45:k==='aurora'?55:k==='meteors'?40:50,x};
+ const big=k==='eclipse'||k==='aurora'||(k==='comet'&&x.mag!=null&&x.mag<=-3)||(k==='supernova'&&x.mag!=null&&x.mag<=-4);
+ if(big)toast(`<b>${esc(label)}</b>${e.f?'<br><small>'+esc(e.f.length>170?e.f.slice(0,167)+'…':e.f)+'</small>':''}`,big?8000:5000);
+ if(k==='eclipse'){const add=(ang,op,col)=>{const g=new THREE.SphereGeometry(R+3.4,48,8,0,Math.PI*2,0,ang),m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));m.renderOrder=3;scene.add(m);
+   const up=new THREE.Vector3(0,1,0),sw=22*DEG;SPEC.push({m,t:0,life:sc.dur,up:(mm,kk)=>{const V=U.clone().applyAxisAngle(T.N,-(kk-.5)*sw);mm.quaternion.setFromUnitVectors(up,V);mm.material.opacity=op*Math.sin(Math.PI*kk)}})};
+  add(55*DEG,.28,0x05070c);add(Math.max(.6,(x.wd||150)/2/111)*DEG*1.6,.8,0x000000);slabel(U,'🌑 '+label,sc.dur)}
+ else if(k==='aurora'){const pole=v3(GEOP[0],GEOP[1],1),rad=(x.alat!=null?90-x.alat:/Miyake|Assyrian/.test(label)?40:42)*DEG,red=rad>45*DEG,N=128,RR=rad>30*DEG?[22*DEG,(rad+22*DEG)/2,rad]:[rad];
+  for(const rad of RR)for(const sgn of[1,-1]){const P=pole.clone().multiplyScalar(sgn),A=new THREE.Vector3().crossVectors(P,Math.abs(P.y)<.9?new THREE.Vector3(0,1,0):new THREE.Vector3(1,0,0)).normalize(),B=new THREE.Vector3().crossVectors(P,A);
+   const pos=new Float32Array((N+1)*2*3),col=new Float32Array((N+1)*2*3),idx=[];
+   for(let i=0;i<=N;i++){const th=i/N*Math.PI*2,rr=Math.min(rad*.92,rad-(3+2*Math.sin(th*5)+Math.sin(th*13))*DEG),D=P.clone().multiplyScalar(Math.cos(rr)).addScaledVector(A,Math.sin(rr)*Math.cos(th)).addScaledVector(B,Math.sin(rr)*Math.sin(th)).normalize(),nt=clamp(.35-D.dot(sunDir)*2.5,0,1);
+    for(let j=0;j<2;j++){const h=j?(red?6.5:4.5):1.6,v=D.clone().multiplyScalar(R+h);pos.set([v.x,v.y,v.z],(i*2+j)*3);const c=j?(red?[.9,.15,.25]:[.2,.5,.6]):[.25,1,.5];col.set(c.map(q=>q*nt),(i*2+j)*3)}
+    if(i<N)idx.push(i*2,i*2+1,i*2+2,i*2+1,i*2+3,i*2+2)}
+   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));g.setIndex(idx);
+   const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));m.frustumCulled=false;m.renderOrder=4;scene.add(m);
+   SPEC.push({m,t:0,life:sc.dur,up:(mm,kk)=>{mm.material.opacity=(.55+.25*Math.sin(kk*90))*Math.min(1,Math.sin(Math.PI*kk)*2.5)}})}
+  slabel(U,'🌌 '+label,sc.dur)}
+ else if(k==='comet'){const H=at(U,T,3,0,2.5);sc.H=H;const len=x.mag!=null&&x.mag<=-3?9:6,cg=new THREE.ConeGeometry(len*.12,len,20,1,true).translate(0,-len/2,0).rotateX(Math.PI),m=new THREE.Mesh(cg,new THREE.MeshBasicMaterial({color:0xbfe0ff,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
+  m.position.copy(H);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),sunDir.clone().negate().normalize());m.renderOrder=6;m.frustumCulled=false;scene.add(m);SPEC.push({m,t:0,life:sc.dur,up:(mm,kk)=>{mm.material.opacity=.22*Math.min(1,Math.sin(Math.PI*kk)*2)}});slabel(U,'☄️ '+label,sc.dur)}
+ else if(k==='supernova'){sc.H=at(U,T,2,1.5,3);slabel(U,'✨ '+label,sc.dur)}
+ else if(k==='transit'){sc.H=at(U,T,0,0,2);slabel(U,'🔭 '+label,sc.dur)}
+ else slabel(U,'🌠 '+label,sc.dur);
+ SCN.list.push(sc);return sc}
+function updSky(sc,dt){const{U,T,t,x,kind}=sc,kk=t/sc.dur,f=Math.min(1,Math.sin(Math.PI*Math.min(1,kk))*2.5);if(f<=0)return;
+ if(kind==='comet'&&rnd()<dt*30){const r=x.mag!=null&&x.mag<=-3?.6:.4;emit('a',sc.H,new THREE.Vector3(),.4,r*f,r*.6*f,[1,1,.95,.9],[.75,.88,1,0],0,0)}
+ else if(kind==='supernova'&&rnd()<dt*30){const b=x.mag!=null?clamp((3-x.mag)/10,.3,1.1):.5,pk=kk<.15?kk/.15:1-(kk-.15)*.7;emit('a',sc.H,new THREE.Vector3(),.35,1.2*b*pk*f,.8*b*pk*f,[1,.97,.85,1],[.85,.9,1,0],0,0)}
+ else if(kind==='transit'&&rnd()<dt*20){emit('a',sc.H,new THREE.Vector3(),.4,1.2*f,1*f,[1,.85,.45,.6],[1,.7,.3,0],0,0);emit('n',sc.H.clone().addScaledVector(T.E,(kk-.5)*.9),new THREE.Vector3(),.3,.1,.1,[.02,.02,.02,.9],[.02,.02,.02,.6],0,0)}
+ else if(kind==='meteors'){const rate=x.rate?clamp(Math.log10(x.rate)*5,4,30):3;if(rnd()<dt*rate*f){const a=rnd()*Math.PI*2,r=rnd()*3,p=at(U,T,Math.cos(a)*r,Math.sin(a)*r,1+rnd()*1.2),v=T.E.clone().multiplyScalar(-1.5-rnd()).addScaledVector(T.N,.7).addScaledVector(U,-1.1);for(let i=0;i<6;i++)emit('a',p.clone().addScaledVector(v,-i*.025),v,.45+i*.02,.06-i*.006,.01,[1,.95,.8,1],[1,.6,.3,0],0,0)}}}
+function memorial(U,o){specInit();const T=tanOf(U),sc={k:'mem',U,T,o,t:0,dur:50};const d=new THREE.Mesh(new THREE.CircleGeometry(1,48),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));d.position.copy(at(U,T,0,0,.003));d.lookAt(0,0,0);d.scale.setScalar(.15);scene.add(d);SPEC.push({m:d,t:0,life:50,up:(m,k)=>{m.material.opacity=.45*Math.sin(Math.PI*k)}});SCN.list.push(sc);slabel(U,'Remembered: '+o.label,50);return sc}
+function updMem(sc,dt){const{U,T}=sc;if(rnd()<dt*12){const a=rnd()*Math.PI*2,r=Math.sqrt(rnd())*.13;emit('a',at(U,T,Math.cos(a)*r,Math.sin(a)*r,.004),U.clone().multiplyScalar(.004),6,.006,.003,[1,.8,.45,.9],[1,.6,.3,0],0,0)}}
+function famine(U,o){specInit();const T=tanOf(U),sc={k:'fam',U,T,o,t:0,dur:50};const d=new THREE.Mesh(new THREE.CircleGeometry(1,48),new THREE.MeshBasicMaterial({color:0x8a6a3a,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));d.position.copy(at(U,T,0,0,.004));d.lookAt(0,0,0);scene.add(d);SPEC.push({m:d,t:0,life:50,up:(m,k)=>{m.scale.setScalar(.05+k*(o.R||1.2));m.material.opacity=.45*Math.sin(Math.PI*k)}});SCN.list.push(sc);slabel(U,o.label,50);return sc}
+function updFam(sc,dt){const{U,T}=sc;if(rnd()<dt*8){const a=rnd()*Math.PI*2,r=Math.sqrt(rnd())*.6;dustAt(at(U,T,Math.cos(a)*r,Math.sin(a)*r,.01),U,.03,1,[.7,.58,.4,.45])}}
+function stormScene(U,o){specInit();const T=tanOf(U),sc={k:'storm',U,T,o,t:0,dur:60};SCN.list.push(sc);slabel(U,o.label,60);setTimeout(()=>floodAt(U,.3),20000);return sc}
+function updStorm(sc,dt){const{U,T}=sc,t=sc.t;for(let i=0;i<(LITE?3:7);i++){const a=rnd()*Math.PI*2,r=.03+rnd()*.5,ang=a+t*.6,dn=Math.cos(ang)*r-(30-t)*.01,de=Math.sin(ang)*r;const v=T.N.clone().multiplyScalar(-Math.sin(ang)).addScaledVector(T.E,Math.cos(ang)).multiplyScalar(.25/(r*3+.2));emit('n',at(U,T,dn,de,.12+rnd()*.06),v,2.5,.08,.14,[.92,.93,.96,.55],[.85,.86,.9,0],0,.2)}
+ if(rnd()<dt*30)emit('n',at(U,T,(rnd()-.5)*.6,(rnd()-.5)*.6,.12),U.clone().multiplyScalar(-.12),1,.006,.006,[.7,.8,1,.6],[.7,.8,1,.3],0,0)}
+function chern(U,o){specInit();blast(U,.03,{fire:60,debris:50,smoke:20,flashC:0xd0ffd0});const T=tanOf(U),sc={k:'chern',U,T,o,t:0,dur:70};SCN.list.push(sc);slabel(U,o.label,70);return sc}
+function updChern(sc,dt){const{U,T,t}=sc;putI(SBld,at(U,T,0,0),U,T.N,0x8a8a84,1,.012,.03,.02);fireAt(at(U,T,0,0,.012),U,.005,dt,10);if(rnd()<dt*10)emit('a',at(U,T,0,0,.015),U.clone().multiplyScalar(.01).addScaledVector(T.N,.02).addScaledVector(T.E,-.015),14,.012,.08,[.45,.9,.5,.35],[.3,.7,.35,0],0,0)}
+function playDisc(y,title,key){if(catching)return;try{homeEvent(title)}catch(e){}if(BTW[title]){fireBattle(BTW[title],1);return}if(JRNM[title]){const id='jrn|'+title;if(DONE_.has(id))return;DONE_.add(id);playJourney(JRNM[title]);return}const kind0=evKind(title),kind=kind0||'cine';if(kind==='erupt'&&!/Toba|Yellowstone/.test(title))return;const id=kind==='sky'||WRW[title]?kind+'|'+title:kind+'|'+Math.floor(y/3);if(DONE_.has(id))return;
+ let lat,lon;if(EVLOC[title]){[lat,lon]=EVLOC[title];if(y<-5e6){const p=paleoPos(lat,lon,y);lat=p[0];lon=p[1]}}else if(key&&SK[key]&&SK[key].U){const p=ll(SK[key].U.x,SK[key].U.y,SK[key].U.z);[lat,lon]=p}else return;DONE_.add(id);if(SCN.list.length>6)return;
+ const U=v3(lat,lon,1),label=title,Y=y;let M=+(title.match(/M\s?(\d\.\d)/)||[])[1]||7.5,ts=+((title.match(/(\d+) m tsunami|tsunami up to (\d+) m/)||[]).slice(1).find(Boolean)||0);
+ try{specInit();switch(kind){
+  case 'assn':assassination(U,Y<1500?{stab:true,attackers:16,crowd:50,label}:{label,crowd:80,shots:Y>1900?3:1,hitT:7});break;
+  case 'nuke':nukeScene(U,{label,second:[32.75,129.87,'Nagasaki: a 21-kiloton atomic bomb',3]});break;
+  case 'chern':chern(U,{label});break;
+  case 'sky':skyScene(U,SKX[title],label);break;
+  case 'meteor':{const D=DTE[title]&&DTE[title].d?DTE[title].d:/Tunguska/.test(title)?50:/Chelyabinsk/.test(title)?20:100;meteor(D,lat,lon,title.split(':')[0]);break}
+  case 'quake':quakeScene(U,{M,fire:Y>1700,ts,tsR:ts?Math.min(40,8+ts):0,tsDelay:3000,label,dur:55});break;
+  case 'erupt':eruptScene(U,{vei:8,label});break;
+  case 'cine':cine(U,title,Y);break;
+  case 'storm':{const sw=SWX[title];say(label);stormScene(U,{label});if(sw&&/windstorm/.test(title))break;setTimeout(()=>landfall({U},sw&&sw.w?{cat:swCat(sw.w),wind:sw.w,name:title.split(/[ ,(]/).slice(0,2).join(' ')}:{cat:/Haiyan|Bhola|Katrina|Galveston/.test(title)?5:4,wind:/Haiyan/.test(title)?315:250,name:title.split(/[ ,(]/).slice(0,2).join(' ')}),15000);break}
+  case 'tornado':{const ef=+((title.match(/E?F(\d)\b/)||[])[1]);tornado(U,{ef:ef>=0&&ef<=5?ef:/EF5|deadliest/.test(title)?5:4,label,dur:60});break}
+  case 'hail':thunder(U,{label});break;
+  case 'blizzard':blizzard(U,{label});break;
+  case 'dust':haboob(U,{label});break;
+  case 'heat':heatwave(U,{label});break;
+  case 'sick':sickScene(U,{label,col:/COVID|influenza/i.test(title)?0x9ab8d8:0x9acd32,R:/pandemic|COVID|Influenza/i.test(title)?2.5:.8,cfr:/COVID|cholera/i.test(title)?.05:.3});break;
+  case 'famine':famine(U,{label});break;
+  case 'flood':floodScene(U,{label,r:.8});break;
+  case 'ship':sinking(U,{label});break;
+  case 'wreck':wreckScene(U,WRW[title],title);break;
+  case 'fire':fireCity(U,{label});break;
+  case 'memorial':say('Remembered: '+label);memorial(U,{label});break;
+  case 'crowd':crowdScene(U,{label});break;
+  case 'revolt':{battle(U,{a:['Revolutionaries',0x8a2a2a,0],b:['Government troops',0x2a3a6a,Y<1900?.2:0],win:'a',n:60,W:.3,gap:.22,dur:60,tanks:Y>1916?2:0,planes:0,label});break}
+  case '911':attack911(U,{label});break;
+  case 'raid':raidScene(U,{label});break;
+  case 'battle':{const sd=sidesOf(title,Y);battle(U,{a:[sd[0],0xa03a2a,Y>-1500&&Y<1900?.2:0],b:[sd[1],0x2a4a8a,Y>-1500&&Y<1900?.15:0],win:'a',n:90,dur:70,label});break}}}catch(e){console.error(e)}
+ const watch=()=>{stopAuto();flyTo(U,kind==='sky'?({eclipse:30,aurora:45,comet:8,supernova:8,meteors:3,transit:2}[SKX[title].k]||8):kind==='cine'?(/climate|geo/.test(cineKind(title))?12:/voyage/.test(cineKind(title))?4:1):kind==='battle'||kind==='revolt'?2:kind==='nuke'?3:kind==='quake'&&ts?3:kind==='sick'||kind==='famine'||kind==='storm'?6:1.2)};if(U.angleTo(cam.t)>.1)toast(`<b>Happening now:</b> ${esc(title)}<br><span class="sm">Tap here to watch</span>`,7000,watch)}
+
+function playScene(b){if(catching)return;try{cardWitness(b[1])}catch(e){}track('big_event',{title:b.t});if(JRNM[b.t]){DONE_.add('jrn|'+b.t);playJourney(JRNM[b.t]);return}const sp=SC_[b.t];if(!sp)return;setTimeout(()=>say(sp[1].label||b.t),2500);for(const k of['battle','assn','nuke','quake','ship','fire','crowd','911','raid','chern','erupt','revolt'])DONE_.add(k+'|'+Math.floor(b.y/3));specInit();const U=bigPos(b);const f={battle,assn:assassination,'911':attack911,ship:sinking,fire:fireCity,crowd:crowdScene,launch:launchScene,raid:raidScene,nuke:nukeScene,erupt:eruptScene,quake:quakeScene}[sp[0]];
+ if(!followId&&!followAni){stopAuto();flyTo(U,sp[0]==='nuke'?3:sp[0]==='erupt'?2.5:sp[0]==='quake'&&sp[1].ts?3:sp[0]==='battle'?2:sp[0]==='assn'?1:1.2)}setTimeout(()=>{try{f(U,sp[1])}catch(e){console.error(e)}},sp[0]==='nuke'||sp[0]==='erupt'?0:2500)}
+// small local fights near the camera
+let skirmT=0;function localFight(s,txt){if(catching||!s||!s.U||performance.now()-skirmT<40000||SCN.list.some(x=>x.k==='battle'))return;skirmT=performance.now();specInit();const Y=simY,sg=nameAt(s,Y);
+ battle(s.U.clone().applyAxisAngle(tanOf(s.U).N,.0015),{a:[sg,0x3a5a8a,Y>-2000&&Y<1900?.15:0],b:[/raid/i.test(txt)?'Raiders':'Attackers',0x8a3a2a,Y>-2000&&Y<1900?.3:0],win:rnd()<.6?'a':'b',n:22,W:.2,gap:.18,dur:45,tanks:2,s:1.2,label:txt.replace(/^.*?: /,'')})}
+
+
+

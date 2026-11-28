@@ -1,6 +1,10 @@
 # Building and checking Humanity, Live
 
-- `tools/tpl.html` is the source. `python3 tools/build.py` (run from `tools/`) writes `index.html` (CDN three.js) and `test.html` (local three.js for tests).
+- The page source is split into one file per system in `tools/src/` (see `tools/CODEMAP.md` for which file owns what, and where new code goes). Edit those files.
+- `python3 tools/build.py` (run from `tools/`) joins `src/*` in file-name order into `tools/tpl.html`, then writes `index.html` (CDN three.js) and `test.html` (local three.js for tests).
+  `tpl.html` is a generated file and not in git: never edit it by hand. build.py stops with a message naming the right `src/` file if it was edited; move the edit there and run `python3 build.py --force`.
+  Tools that read `tpl.html` (cards.js, models.py, sizes.py) still work after a build. It needs `mask.b64` and `topo.b64` next to it.
+- Wherever older notes or prompts say "edit tools/tpl.html", edit the owning `tools/src/` file instead.
   It needs `mask.b64` and `topo.b64` next to it.
 - Copy `tools/index.html` to `public/index.html` to ship.
 - Stability check: `npm i three@0.128.0` inside `tools/`, `pip install playwright`, then `python3 tools/smoke.py`. It must print only PASS lines before anything is pushed.
@@ -33,7 +37,7 @@ All of these need `python3 build.py` first and `ln -s ../public/quiz quiz` once 
 - `python3 smoke.py 1815 -480` runs only the smoke cases for those years, for quick checks while working. The full `python3 smoke.py` (about 8 minutes) is still the gate before pushing.
 - `python3 models.py` renders every instanced shape (dinosaurs, mammals, sea life, people, horses, vehicles, ships, trees) alone in daylight from the side (forward = left), front three-quarter and top, into `shots/models/sheet.png` (one PNG per shape too), and prints triangles, max instances and height/length measured in people (person = the `bodyM` figure; in-game scale per instance is on top of this). About 10 seconds.
   - `python3 models.py thero cera` only shapes whose name contains those words; `--list` only prints the numbers. Exits 1 if an animal is over 300 triangles or anything else over 600.
-  - Try a new shape before editing tpl.html: `--js new.js` where new.js is page code that evaluates to `{name: geometry or [geometries]}` (THREE, mergeG, BASE and all page variables are in scope); it renders as `new.<name>` next to the live ones.
+  - Try a new shape before editing tools/src/: `--js new.js` where new.js is page code that evaluates to `{name: geometry or [geometries]}` (THREE, mergeG, BASE and all page variables are in scope); it renders as `new.<name>` next to the live ones.
   - `--save m.json` / `--compare m.json` show triangle changes per shape.
   - Page variables live inside a block, so tools reach them through the test hook `HS.X(code)` (eval inside the page's scope), not as window globals.
 - `python3 sizes.py` shows where the page's bytes go: each `// ====` section of tpl.html raw and gzipped, the biggest single lines (data tables), the embedded mask/topo, and the built index.html gzipped. `--save`/`--compare` show the change per section (gzipped KB is what visitors download).
@@ -57,4 +61,4 @@ All of these need `python3 build.py` first and `ln -s ../public/quiz quiz` once 
 `python3 tools/annoy.py` (after build.py) counts automatic popups per minute at ground level in three eras and fails above 3 a minute. Run it before shipping anything that shows messages.
 
 ## Detailed animal models (.hlm)
-A detailed model replaces an animal's simple shape up close. Format: "HLM1", header length, JSON header (vertex count, index count, bounding box, hip height, foot and tail positions, source), then int16 positions, int8 normals, uint16 UVs, uint16 indices and a JPEG texture. Models live in the worker's IMPORTS key-value store as file:<name> and are served at /a/<name>; to add one, upload the file to the Higgsfield file host and queue a job {"url": "...", "keep": "<name>.hlm"} (only that host is allowed, and only for kept files). Add the species key and file to MDL_LIST in tpl.html. If the file can't load, the old shape is used.
+A detailed model replaces an animal's simple shape up close. Format: "HLM1", header length, JSON header (vertex count, index count, bounding box, hip height, foot and tail positions, source), then int16 positions, int8 normals, uint16 UVs, uint16 indices and a JPEG texture. Models live in the worker's IMPORTS key-value store as file:<name> and are served at /a/<name>; to add one, upload the file to the Higgsfield file host and queue a job {"url": "...", "keep": "<name>.hlm"} (only that host is allowed, and only for kept files). Add the species key and file to MDL_LIST (tools/src/32-animal-behavior.js). If the file can't load, the old shape is used.

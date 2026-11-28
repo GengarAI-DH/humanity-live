@@ -6,7 +6,7 @@ to a projected year 2100. **One real second = one year**; nobody can speed it up
 The full run takes about 2 years and 3 months of real time.
 
 - `public/index.html` – the built page (three.js r128 from cdnjs)
-- `tools/tpl.html` – the source template; `tools/build.py` injects the land mask and builds the page
+- `tools/src/` – the page source, one file per system (map in `tools/CODEMAP.md`); `tools/build.py` joins them into `tools/tpl.html` (generated), injects the land mask and builds the page
 - `src/worker.js` – Cloudflare Worker: serves the page and `/api/world` (the shared world's start time)
 - `wrangler.jsonc` – Cloudflare config; `WORLD_START` is the moment the shared world began (ms since 1970)
 

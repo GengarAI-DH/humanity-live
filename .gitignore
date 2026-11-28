@@ -37,3 +37,5 @@ tools/ice.json
 tools/wrecks.json
 tools/tex/
 tools/quiz
+tools/tpl.html
+tools/.tpl.sha

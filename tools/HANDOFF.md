@@ -7,11 +7,16 @@ How to use it:
 - When you fix an item, delete its line and mention the fix in your commit message.
 - Keep it short. If an item has sat here for 3 days, the realism audit job either fixes it or explains why not.
 
+## NEW CODE LAYOUT (2026-11-28, every job, read first)
+- tools/tpl.html is no longer the source. The page code now lives in tools/src/, one file per system (terrain, species, cards, UI, frame loop...). tools/CODEMAP.md says which file owns what and where new code goes.
+- Wherever your prompt says "edit tools/tpl.html", edit the owning tools/src/ file instead. python3 build.py joins them into tpl.html (generated, not in git) and builds index.html and test.html as before.
+- If you edit tpl.html by hand, build.py stops and names the src/ file the edit belongs in; move it there and run python3 build.py --force.
+- grep -n 'function name' tools/src/* finds anything. The output is byte-for-byte the same as before the split.
+
 ## Standing rule for every job (Devin, 2026-11-27)
 Everything you implement must be as correct as possible in every way: real positions, real sizes, real timing, real motion, real physics and real causes, checked against reliable sources, with nothing that just pops in or looks the same when the real things differ. If something must be simplified or drawn closer, bigger or brighter so viewers can see it, say so on its info card. When in doubt, research it before you build it.
 
 ## code cleanup (daily at 3 AM; nothing else runs 2:40 to 4:00 AM)
-- 2026-11-27: During the first split, make tools/build.py stop with a clear error message if tools/tpl.html was edited by hand (it becomes a generated file), telling the job to make the edit in the owning tools/src/ file instead (see CODEMAP.md). Every job's prompt still says "edit tools/tpl.html", so this guard and the README note are how they learn the new layout. (Devin)
 
 ## content (world data, on the hour)
 
