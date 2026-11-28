@@ -1,5 +1,13 @@
 # Realism audit log (newest first)
 
+## 2026-11-28
+Audited: Late Jurassic Morrison Formation, Wyoming (150 Ma; species and plant lists, ground and region views); L'Anse aux Meadows, Newfoundland (1000 CE; journey dates); Rapa Nui (1400 CE; settlement start, moai, language). Also read the whole built-in deep-time species table for date and region errors.
+Checked fine: Morrison fauna ranges (Allosaurus, Stegosaurus, Diplodocus, Brachiosaurus) and plants (Araucaria, ginkgo, horsetail); Norse journey dates (Erik the Red about 985, L'Anse aux Meadows tree rings 1021); Rapa Nui settlement 1200 and moai 1250 against radiocarbon dating (Wilmshurst et al. 2011, PNAS); Hawaii 1000, Aotearoa 1280.
+Fixed:
+- Hipparion started at 23 Ma; the three-toed Old World hipparionines arrived in Eurasia and Africa about 11.4-11.0 Ma from North America (Wikipedia "Hipparion", citing Bernor et al.; strict-sense Hipparion about 10-5 Ma). Start set to 11.4 Ma and North America removed (assignment of American remains to Hipparion is uncertain).
+- Placerias was listed in North America, Africa, South America and India; its fossils are known only from Arizona, New Mexico and North Carolina, 230-215 Ma (Wikipedia "Placerias", citing Chinle Formation work; Paleobiology Database). Regions set to North America, end 215 Ma.
+Not changed: ground and region screenshots were taken at night and could not judge ground cover; generic Mammoth entry ends 70,000 years ago but the Ice Age biome code supplies mammoths to 10,000 BCE (works as intended); Cave lion entry runs to the present for Africa.
+
 ## 2026-11-27 (third run)
 Audited: Late Cretaceous Gobi, 66 Ma (plant list, ground view); Ice Age Pampas / Rio de la Plata, 15,000 BCE (megafauna list, ground and region views); Angkor, Cambodia, 1150 CE (ground view).
 Checked fine: Pampas megafauna roster and ranges for Doedicurus, Glossotherium, Mylodon, Hippidion, Eremotherium (all end about 12,000 years ago); Angkor city placement and wall.
