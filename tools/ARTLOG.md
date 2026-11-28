@@ -1,6 +1,13 @@
 # Art and tools log (newest first)
 Runs alternate: ART (make things look like the real thing) and TOOLS (help the other jobs).
 
+## 2026-11-27 ART (2)
+- Handoff top priority (animals slide around stiff): added GAIT(mesh, legTop, swing, biped, tailZ, tailAmp, mode, k, rate, idle) in tpl.html. Vertex-shader animation via onBeforeCompile on the instanced animal materials, with one per-instance attribute aGt = (gait phase, gait amount) written by gaitSet() in updWild/updAnimals. Phase advances only while the animal travels (x1.8 when running/fleeing), rate / sqrt(species scale) so big animals step slower; amount eases to 0 when resting. Mode 0 walkers: legs below legTop swing (diagonal pairs for quadrupeds, left/right for bipeds), body bobs, tail sways (always, slowly). Mode 1 fish: side-to-side body wave. Mode 2 ptero/plesio: wings/flippers flap. All modes: countershading (paler belly, darker back) in the colour stage.
+- Covers wildM, aniM, thero, spino, sauro, cera, stego, ankylo, ptero, plesio, fish. Not yet: whaleM (has its own dive cycle), people (bodyM is one cone), SHorse, caravM, birdM.
+- Rebuilt quad() (every Cenozoic wild mammal and domestic animal): rounded barrel, neck angled forward-up, tapered head, hanging tail, tapered legs. 72 -> 105 tris. Scaled 0.92 so nose-to-rump length matches the old box (MESHLEN unchanged).
+- perf.py (same machine, -30000 and -480): JS ms within noise (lower), draw calls unchanged, triangles +3.4% to +6.4% per view (+5.0% total) from the 105-tri mammal shape; at the budget edge, so the next mammal detail should come from per-family shapes rather than more triangles on quad. smoke.py: 38 PASS, exit 0.
+- Next: per-family mammal shapes (elephant/mammoth trunk, big cats, bovids with horns) chosen by species; sauro and ptero bodies still boxes; people walk cycle needs separate legs in bodyM.
+
 ## 2026-11-27 TOOLS (2)
 - New: models.py (model sheet of every instanced shape in daylight, 3 views, triangles, height in people, --js to preview a new shape without editing tpl.html, triangle budget flags) and sizes.py (bytes per tpl.html section and biggest data lines, raw and gzipped, with --save/--compare).
 - Found while building it: page variables are inside a block, so window.WMESH etc. are undefined; HS.X(code) evaluates inside the page scope. Documented in README.

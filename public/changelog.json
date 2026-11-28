@@ -1,6 +1,10 @@
 [
  {
   "when": "Nov 27",
+  "text": "Animals move like animals: legs swing in a walking rhythm while they travel (faster when they run, still when they rest), bigger animals step more slowly, tails sway, pterosaurs and plesiosaurs flap, fish swim with side-to-side strokes, and animals are darker on the back and paler underneath. Mammals have a new shape with a real neck, head and tail instead of a box."
+ },
+ {
+  "when": "Nov 27",
   "text": "Ice-age ice sheets now follow a real reconstruction of the last deglaciation (ICE-NADI-1 and ICE-7G, every 500 years): the Laurentide, Cordilleran, Scandinavian and British ice sheets cover their real areas, Hudson Bay and the Barents Sea fill with ice, and they melt back on their real dates. Rivers and lakes under the ice are hidden."
  },
  {
@@ -154,9 +158,5 @@
  {
   "when": "Nov 27",
   "text": "86 real milestones from the last dinosaurs to the first humans now appear on the timeline at their real dates and fossil sites: the Wonderchicken, Titanoboa, the first penguins, bats, whales, cats and apes, Laetoli's footprints, heat spikes, a second asteroid off West Africa and more. Each card says what the fossils show and which study found it, and deep-time events now fly to where the place was on the drifting continents."
- },
- {
-  "when": "Nov 27",
-  "text": "Smoother on phones: far-away trees, people and animals are no longer drawn when they would be smaller than a pixel, cutting the work per frame roughly in half. Mountains, ridges and valleys are now shaded so the terrain stands out, the biome colours blend instead of showing blocks, and rivers are brighter."
  }
 ]
